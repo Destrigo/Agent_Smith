@@ -1,9 +1,10 @@
 import io
 from contextlib import redirect_stdout
+from sandbox_model import SandboxConfig
 
-
-class Sandbox:
+class Sandbox(SandboxConfig):
     def __init__(self):
+        super().__init__()
         self.tools = {
             "hello": 0
         }
