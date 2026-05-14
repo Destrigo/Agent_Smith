@@ -1,8 +1,8 @@
 # @mcp.tool()
 def read_file(
     filepath: str,
-    start_line: int = 1,
-    end_line: int = 50
+    start_line: int,
+    end_line: int
     ) -> str:
     with open(filepath) as f:
         lines = f.readlines()
