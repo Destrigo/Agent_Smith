@@ -1,6 +1,7 @@
 import subprocess
+from mcp_server import mcp_server as mcp
 
-# @mcp.tool()
+@mcp.tool()
 def get_patch() -> str:
     result = subprocess.run(
         ["git", "diff"],

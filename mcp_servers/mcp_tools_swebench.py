@@ -1,24 +1,14 @@
-from mcp import MCPServer
-import shared_tools as t
+from mcp_server import mcp_server
+import shared_tools.execution.get_patch
+import shared_tools.execution.run_command
+import shared_tools.execution.run_tests
+import shared_tools.filesystem.edit_file
+import shared_tools.filesystem.read_file
+import shared_tools.filesystem.list_files
+import shared_tools.search.search_code
+import shared_tools.search.find_definition
+import shared_tools.search.find_references
 
-mcp = MCPServer()
-
-
-@mcp.tool()
-def read_file(filepath: str, start_line: int = 1, end_line: int = 100):
-    return t.read_file(filepath, start_line, end_line)
-
-
-@mcp.tool()
-def edit_file(filepath: str, old_str: str, new_str: str):
-    return t.edit_file(filepath, old_str, new_str)
-
-
-@mcp.tool()
-def run_command(command: str, workdir: str):
-    return t.run_command(command, workdir)
-
-
-@mcp.tool()
-def get_patch():
-    return t.run_command("git diff", workdir="/testbed")
+# print("MCP Server is running with the following tools:")
+# a = mcp_server._tool_manager.list_tools()
+# print(a)

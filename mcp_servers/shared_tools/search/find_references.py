@@ -1,7 +1,8 @@
 import os
 import re
+from mcp_server import mcp_server as mcp
 
-# @mcp.tool()
+@mcp.tool()
 def find_references(name: str, filepath: str = "", line: int = 0):
     results = []
 

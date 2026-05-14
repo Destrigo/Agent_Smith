@@ -1,8 +1,8 @@
 import os
 import fnmatch
+from mcp_server import mcp_server as mcp
 
-
-# @mcp.tool()
+@mcp.tool()
 def list_files(directory: str, pattern: str) -> list[str]:
     """
     List files in a directory matching a glob pattern.

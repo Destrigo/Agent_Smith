@@ -1,7 +1,8 @@
 import os
 import fnmatch
+from mcp_server import mcp_server as mcp
 
-# @mcp.tool()
+@mcp.tool()
 def search_code(pattern: str, file_pattern: str = "*"):
     results = []
 

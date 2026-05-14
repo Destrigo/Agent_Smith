@@ -1,5 +1,5 @@
 import subprocess
-
+from mcp_server import mcp_server as mcp
 # ALLOWED_DIRS = ["/testbed", "/tmp/agent"]
 
 # def _is_allowed_dir(path: str) -> bool:
@@ -7,7 +7,7 @@ import subprocess
 #     return any(path == d or path.startswith(d + "/") for d in ALLOWED_DIRS)
 
 
-# @mcp.tool()
+@mcp.tool()
 def run_command(command: str, workdir: str):
     """
     Execute a shell command inside a restricted working directory.

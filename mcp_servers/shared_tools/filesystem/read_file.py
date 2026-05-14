@@ -1,4 +1,7 @@
-# @mcp.tool()
+
+from mcp_server import mcp_server as mcp
+
+@mcp.tool()
 def read_file(
     filepath: str,
     start_line: int,

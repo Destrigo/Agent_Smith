@@ -1,7 +1,8 @@
 import os
 import re
+from mcp_server import mcp_server as mcp
 
-# @mcp.tool()
+@mcp.tool()
 def search_function_or_class_definition_in_code(name: str):
     results = []
 
