@@ -5,6 +5,10 @@ from models.llm import Message
 
 
 class AgentState(BaseModel):
+    """
+    Mutable state carried across iterations of the agent loop.
+    Serializable so it can be logged / inspected at any point.
+    """
     task_id: str
     benchmark: Literal["mbpp", "swebench"]
     iteration: int = 0
@@ -14,8 +18,6 @@ class AgentState(BaseModel):
     start_time: Optional[float] = None
     messages: list[Message] = Field(default_factory=list)
     steps: list[StepMetrics] = Field(default_factory=list)
-    current_model: str = ""
-    current_provider: str = ""
     final_answer: Optional[str] = None
     failed: bool = False
     error: Optional[str] = None
