@@ -27,3 +27,16 @@ class AgentState(BaseModel):
     max_input_tokens: int = 6000
     max_output_tokens: int = 1500
     max_time_seconds: int = 120
+
+    def is_done(self) -> bool:
+        return self.final_answer is not None or self.failed
+
+    def within_limits(self) -> tuple[bool, str]:
+        if self.iteration >= self.max_iterations:
+            return False, f"max_iteration={self.max_iterations} reached"
+        if self.total_input_tokens >= self.max_input_tokens:
+            return False, f"max_input_tokens={self.max_input_tokens} exceeded"
+        if self.total_output_tokens >= self.max_output_tokens:
+            return (False, f"max_output_tokens={self.max_output_tokens} "
+                    "exceeded")
+        return True, ""
