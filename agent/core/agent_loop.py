@@ -36,7 +36,7 @@ class AgentLoop:
 
     def _execute(self, code: str) -> SandboxResult:
         try:
-            return self.sandboc.execute(code)
+            return self.sandbox.execute(code)
         except Exception as exc:
             logger.error("Sandbox call failed: %s", exc)
             return SandboxResult(success=False, stdout="", stderr="",
@@ -75,7 +75,7 @@ class AgentLoop:
             state.total_requests += 1 + retries
             state.messages.append(Message(role="assistant",
                                           content=llm_response.content))
-            
+
             code, extraction_note = self.extractor.extract(
                 llm_response.content)
             if code is None:
@@ -99,7 +99,7 @@ class AgentLoop:
                 if sandbox_result.final_answer is not None:
                     state.final_answer = sandbox_result.final_answer
                     logger.info("final_answer() received -> task complete")
-            
+
             step = StepMetrics(step=state.iteration,
                                input_tokens=llm_response.input_tokens,
                                output_tokens=llm_response.output_tokens,
@@ -119,11 +119,11 @@ class AgentLoop:
         return SolutionOutput(task_id=task_id, benchmark=benchmark,
                               success=state.final_answer is not None,
                               solution=state.final_answer or "",
-                              system_prompt=self.system_promt,
+                              system_prompt=self.system_prompt,
                               iterations=state.iteration,
                               total_requests=state.total_requests,
                               total_input_tokens=state.total_input_tokens,
-                              total_output_tokens=self.total_output_tokens,
+                              total_output_tokens=state.total_output_tokens,
                               total_time_seconds=total_time,
                               steps=[StepMetrics(**s) for s in state.steps],
                               error=state.error)
