@@ -55,7 +55,7 @@ class CodeExtractor:
         tool_name = invoke_match.group("name")
         body = invoke_match.group("body")
         kwargs = {}
-        for param in self._XML_PARAM.find(body):
+        for param in self._XML_PARAM.finditer(body):
             kwargs[param.group("pname")] = param.group("pval").strip()
         args_str = ", ".join(f'{k}={json.dumps(v)}' for k, v in kwargs.items())
         return f"result = {tool_name}({args_str})\nprint(result)"

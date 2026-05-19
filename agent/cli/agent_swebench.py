@@ -225,7 +225,7 @@ def main() -> None:
     output_path = Path(args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(result.model_dump_json(indent=2))
-    logger.info("Done | success=%s iterations=%d time%.1fs", result.success,
+    logger.info("Done | success=%s iterations=%d time=%.1fs", result.success,
                 result.iterations, result.total_time_seconds)
     sys.exit(0 if result.success else 1)
 

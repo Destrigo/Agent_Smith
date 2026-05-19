@@ -10,7 +10,7 @@ from utils.logger import setup_logging
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-load_dotenv
+load_dotenv()
 
 
 def build_task_message(task: MBPPTaskInput) -> str:
@@ -114,7 +114,7 @@ def main() -> None:
                 task.task_definition[:60])
 
     prompt_path = PROJECT_ROOT / "agent" / "prompts" / "mbpp_prompt.txt"
-    system_prompt = prompt_path.read(encoding="utf-8")
+    system_prompt = prompt_path.read_text(encoding="utf-8")
 
     llm = LLMManager.from_env(provider=args.provider, model=args.model_name,
                               provider_url=args.provider_url)
@@ -126,7 +126,7 @@ def main() -> None:
         max_iterations=args.max_iterations, max_input_tokens=6000,
         max_output_tokens=1500)
     user_message = build_task_message(task)
-    result = loop.run(task_id=task.task_id, benchmark="mbpp",
+    result = loop.run(task_id=str(task.task_id), benchmark="mbpp",
                       user_message=user_message)
 
     output_path = Path(args.output)

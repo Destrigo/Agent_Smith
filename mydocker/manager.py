@@ -17,7 +17,7 @@ class DockerManager:
                 "Docker SDK not available or Docker daemon not running."
                 f"Install with: uv add docker\nError: {exc}")
         self._container = None
-        self._container_id = Optional[str] = None
+        self._container_id: Optional[str] = None
 
     def _pull_image(self, image: str) -> None:
         try:
@@ -32,7 +32,7 @@ class DockerManager:
     def _start_container(self, image: str):
         container = self._client.containers.run(
             image, command="tail -f /dev/null", detach=True, remove=False,
-            men_limit="4g", working_dir="/testbed")
+            mem_limit="4g", working_dir="/testbed")
         for _ in range(10):
             container.reload()
             if container.status == "running":

@@ -18,7 +18,7 @@ class AgentLoop:
                  max_output_tokens: int = 1500) -> None:
         self.llm = llm_manager
         self.sandbox = sandbox_client
-        self.system_promt = system_prompt
+        self.system_prompt = system_prompt
         self.extractor = CodeExtractor()
         self.max_iterations = max_iterations
         self.max_input_tokens = max_input_tokens

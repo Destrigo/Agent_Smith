@@ -3,20 +3,13 @@ import os
 import time
 from typing import Optional
 from models.llm import LLMRequest, LLMResponse
+from llm.providers import PROVIDER_REGISTRY, RateLimitError, TransientError
 
 logger = logging.getLogger(__name__)
 
 # how long to wait between retries (seconds): 1s, 2s, 4s, 8s
 _BACKOFF = [1, 2, 4, 8]
 MAX_RETRIES = 4
-
-
-class RateLimitError(Exception):
-    """HTTP 429 or quota exhausted."""
-
-
-class TransientError(Exception):
-    """5xx or connection timeout — worth retrying."""
 
 
 class LLMManager:
@@ -27,6 +20,8 @@ class LLMManager:
         self.provider_url = provider_url
         self._keys = api_keys
         self._key_index = 0
+        self._call_fn = PROVIDER_REGISTRY.get(provider_name,
+                                              PROVIDER_REGISTRY["openrouter"])
 
         if not api_keys:
             raise ValueError(
@@ -36,7 +31,7 @@ class LLMManager:
 
     @classmethod
     def from_env(cls, provider: str, model: str, provider_url: str
-                 ) -> LLMManager:
+                 ) -> "LLMManager":
         prefix = provider.upper().replace("-", "_") + "_API_KEY"
         keys: list[str] = []
         if val := os.getenv(prefix):
@@ -47,22 +42,30 @@ class LLMManager:
         logger.info("Provider '%s': found %d API key(s)", provider, len(keys))
         return cls(provider, model, provider_url, keys)
 
+    def _current_key(self) -> str:
+        return self._keys[self._key_index % len(self._keys)]
+
+    def _rotate_key(self) -> None:
+        self._key_index = (self._key_index + 1) % len(self._keys)
+
     def complete(self, request: LLMRequest
                  ) -> tuple[Optional[LLMResponse], int]:
         retries = 0
         last_error: Optional[Exception] = None
         for attempt in range(MAX_RETRIES + 1):
-            key = self._next_key()
-            request.api_key = key
-            request.provider_url = self.provider_url
+            call_request = request.model_copy(update={
+                "api_key": self._current_key(),
+                "provider_url": self.provider_url
+            })
             try:
-                response = self._dispatch(request)
+                response = self._call_fn(call_request)
                 response.retries = retries
                 return response, retries
             except RateLimitError as exc:
                 logger.warning(
                     "Rate limit on key index %d (attempt %d/%d): %s",
                     self._key_index, attempt + 1, MAX_RETRIES, exc)
+                self._rotate_key()
                 last_error = exc
             except TransientError as exc:
                 logger.warning(
@@ -76,23 +79,6 @@ class LLMManager:
                 sleep = _BACKOFF[min(attempt, len(_BACKOFF) - 1)]
                 logger.info("Sleeping %ds before retry %d", sleep, attempt + 2)
                 time.sleep(sleep)
-        logger.error("All %d retries exhausted. Last error: %s", MAX_RETRIES,
-                     last_error)
+        logger.error("All %d retries exhausted. Last error: %s",
+                     MAX_RETRIES + 1, last_error)
         return None, retries
-
-    def _next_key(self) -> str:
-        key = self._keys[self._key_index]
-        self._key_index = (self._key_index + 1) % len(self._keys)
-        return key
-
-    def _dispatch(self, request: LLMRequest) -> LLMResponse:
-        provider_map = {
-            "openrouter": _openrouter_call,
-            "groq": _groq_call,
-            "gemini": _gemini_call,
-            "mistral": _mistral_call,
-            "cohere": _cohere_call,
-            "together": _together_call,
-        }
-        fn = provider_map.get(self.provider_name, _openai_compatible_call)
-        return fn(request)

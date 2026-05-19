@@ -1,6 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Literal, Optional
-from models.solution import StepMetrics
+from typing import Literal, Optional, Any
 from models.llm import Message
 
 
@@ -17,7 +16,7 @@ class AgentState(BaseModel):
     total_requests: int = 0
     start_time: Optional[float] = None
     messages: list[Message] = Field(default_factory=list)
-    steps: list[StepMetrics] = Field(default_factory=list)
+    steps: list[dict[str, Any]] = Field(default_factory=list)
     final_answer: Optional[str] = None
     failed: bool = False
     error: Optional[str] = None
