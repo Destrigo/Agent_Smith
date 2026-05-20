@@ -1,5 +1,7 @@
 import logging
 import os
+import io
+import tarfile
 import time
 from typing import Optional
 
@@ -43,9 +45,6 @@ class DockerManager:
         return container
 
     def write_file(self, container_path: str, content: str) -> None:
-        import io
-        import tarfile
-
         content_bytes = content.encode("utf-8")
         tar_buffer = io.BytesIO()
         filename = os.path.basename(container_path)
@@ -60,12 +59,13 @@ class DockerManager:
     def exec_run(self, command: str, workdir: str = "/testbed") -> str:
         if self._container is None:
             raise RuntimeError("No container running. Call start() first.")
-        exit_code, output = self._container.exec_run(
-            ["bash", "-c", command], workdir=workdir, demux=False)
-        result = output.decode("utf-8", errors="replace") if output else ""
-        if exit_code and exit_code != 0:
-            logger.debug("Command exited %d: %s", exit_code, command[:80])
-        return result
+        result = self._container.exec_run(["bash", "-c", command],
+                                          workdir=workdir, demux=False)
+        output = result.output or b""
+        if result.exit_code and result.exit_code != 0:
+            logger.debug("Command exited %d: %s", result.exit_code,
+                         command[:80])
+        return output.decode("utf-8", errors="replace")
 
     def _inject_eval_script(self, eval_script: str) -> None:
         self.write_file("/tmp/eval_script.sh", eval_script)

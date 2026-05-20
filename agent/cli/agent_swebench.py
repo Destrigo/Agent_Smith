@@ -2,10 +2,15 @@ import argparse
 import logging
 import signal
 import sys
+import io
+import os
+import tarfile
+import contextlib
 from pathlib import Path
 from dotenv import load_dotenv
 from models.task import SWEBenchTaskInput
 from models.solution import SolutionOutput
+from models.sandbox import SandboxResult
 from agent.llm.manager import LLMManager
 from agent.core.agent_loop import AgentLoop
 from mydocker.manager import DockerManager
@@ -13,14 +18,14 @@ from utils.logger import setup_logging
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-load_dotenv
+load_dotenv()
 
 
 def build_task_message(task: SWEBenchTaskInput) -> str:
     msg = (
-        f"Respository: {task.repo}\n"
+        f"Repository: {task.repo}\n"
         f"Instance: {task.instance_id}\n\n"
-        f"Issue ti fix:\n{task.problem_statement}\n"
+        f"Issue to fix:\n{task.problem_statement}\n"
     )
     if task.hints_text:
         msg += f"\nHints:\n{task.hints_text}\n"
@@ -37,22 +42,17 @@ class _DockerStubClient:
     Development stub: runs MCP tool calls directly in the Docker container.
     Replace with Agent A's real sandbox before submission.
     """
-    def __init__(self, container_id: str, task: SWEBenchTaskInput) -> None:
-        self._container_id = container_id
+    def __init__(self, docker_mgr: DockerManager, task: SWEBenchTaskInput
+                 ) -> None:
+        self._mgr = docker_mgr
         self._task = task
-        import docker as _docker
-        self._docker = _docker.from_env()
-        self._container = self._docker.containers.get(container_id)
 
-    def execute(self, code: str):
-        from models.sandbox import SandboxResult
-        import io
-        import contextlib
+    def execute(self, code: str) -> SandboxResult:
+        mgr = self._mgr
+        answers = list[str] = []
 
         def run_in_container(cmd: str, workdir: str = "/testbed") -> str:
-            exit_code, output = self._container.exec_run(["bash", "-c", cmd],
-                                                         workdir=workdir)
-            return output.decode("utf-8", errors="replace")
+            return mgr.exec_run(cmd, workdir)
 
         def read_file(filepath: str, start_line: int = None,
                       end_line: int = None) -> str:
@@ -64,12 +64,9 @@ class _DockerStubClient:
             return run_in_container(cmd)
 
         def edit_file(filepath: str, old_str: str, new_str: str) -> str:
-            import os
-            import tarfile
-            content_result = self._container.exec_run(["cat", filepath])
-            if content_result.exit_code != 0:
-                return f"ERROR: cannot read file {filepath}"
-            content = content_result.output.decode("utf-8", errors="replace")
+            result = mgr._container.exec_run(["cat", filepath])
+            content = result.output.decode("utf-8", errors="replace") \
+                if result.output else ""
             if old_str not in content:
                 return (f"ERROR: old_str not found in {filepath}."
                         f"Check exact whitespace/content")
@@ -88,26 +85,37 @@ class _DockerStubClient:
                 return f"Error: failed to write updated file to {filepath}."
             return "File edited successfully."
 
+        def list_files(directory: str, pattern: str = "*") -> str:
+            return run_in_container(f"find '{directory}' -name '{pattern}' "
+                                    "-type f 2>/dev/null | sort | head -100")
+
         def search_code(pattern: str, file_pattern: str = "*.py") -> str:
-            cmd = (f"grep -rn --include '{file_pattern}' '{pattern}' "
-                   "/testbed 2>/dev/null | head -50")
-            return run_in_container(cmd)
+            flag = "-rEn" if any(c in pattern for c in r".*+?[](){}^$|\\") \
+                  else "-rFn"
+            return run_in_container(
+                f"grep {flag} --include='{file_pattern}' "
+                f"'{pattern}' /testbed 2>/dev/null | head -50")
 
         def search_function_or_class_definition_in_code(name: str) -> str:
-            cmd = ("grep -rn --include='*.py' "
-                   f"'\\(def {name}\\|class {name}\\)' /testbed 2>/dev/null "
-                   "| head -20")
-            return run_in_container(cmd)
+            result = run_in_container(
+                f"grep -rEn --include='*.py' "
+                f"'(^|\\s)(async\\s+)?def\\s+{name}\\s*\\(|^class\\s+{name}"
+                "[\\s:(]' /testbed 2>/dev/null | head -20")
+            if not result.strip():
+                result = run_in_container(
+                    f"grep -rn --include='*.py' '{name}' /testbed 2>/dev/null "
+                    "| head -20")
+                if result.strip():
+                    result = "[No exact definition found. Broad matches:]\n"
+                    f"{result}"
+            return result
 
-        def find_references(name: str, filename: str = "", line: int = 0
+        def find_references(name: str, filepath: str = "", line: int = 0
                             ) -> str:
-            cmd = (f"grep -rn --include='*.py' '{name}' /testbed 2>/dev/null "
-                   "| head -30")
-            return run_in_container(cmd)
-
-        def list_files(directory: str, pattern: str = "*") -> str:
-            cmd = f"find {directory} -name '{pattern}' -type f | head -50"
-            return run_in_container(cmd)
+            scope = f"'{filepath}'" if filepath else "/testbed"
+            return run_in_container(
+                f"grep -rEn --include='*.py' '\\b{name}\\b' {scope} "
+                "2>/dev/null | head -30")
 
         def run_tests() -> str:
             return run_in_container("bash /tmp/eval_script.sh 2>&1 | tail -50")
@@ -119,10 +127,8 @@ class _DockerStubClient:
             return run_in_container("git -c core.fileMode=false diff HEAD",
                                     workdir="/testbed")
 
-        _final_answers: list = []
-
         def final_answer(patch: str):
-            _final_answers.append(patch)
+            answers.append(patch)
 
         namespace = {
             "read_file": read_file, "edit_file": edit_file,
@@ -140,7 +146,7 @@ class _DockerStubClient:
             return SandboxResult(
                 success=True, stdout=stdout_buf.getvalue(), stderr="",
                 error=None, execution_time_ms=0.0, memory_usage_mb=0.0,
-                final_answer=_final_answers[0] if _final_answers else None)
+                final_answer=answers[0] if answers else None)
         except Exception as exc:
             return SandboxResult(
                 success=False, stdout=stdout_buf.getvalue(), stderr="",

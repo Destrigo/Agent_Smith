@@ -33,7 +33,8 @@ def _post(url: str, payload: dict[str, Any], api_key: str,
 
 def _parse_response(data: dict, elapsed_ms: float, api_url: str
                     ) -> LLMResponse:
-    choice = data["choices"][0]["message"]["content"]
+    choice = choice = data.get("choices", [{}])[0].get("message", {}).get(
+        "content", "")
     usage = data.get("usage", {})
     return LLMResponse(
         content=choice, input_tokens=usage.get("prompt_tokens", 0),

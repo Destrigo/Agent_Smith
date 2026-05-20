@@ -3,7 +3,8 @@ import os
 import time
 from typing import Optional
 from models.llm import LLMRequest, LLMResponse
-from llm.providers import PROVIDER_REGISTRY, RateLimitError, TransientError
+from agent.llm.providers import (PROVIDER_REGISTRY, RateLimitError,
+                                 TransientError)
 
 logger = logging.getLogger(__name__)
 

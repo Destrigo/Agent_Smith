@@ -51,7 +51,7 @@ class AgentLoop:
                            max_output_tokens=self.max_output_tokens)
         state.start_time = time.time()
         state.messages.append(Message(role="system",
-                                      content=self.system_promt))
+                                      content=self.system_prompt))
         state.messages.append(Message(role="user", content=user_message))
         logger.info("Starting agent loop | task=%s benchmark=%s", task_id,
                     benchmark)
