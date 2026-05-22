@@ -13,6 +13,45 @@ from agent.llm.providers import (RateLimitError, TransientError,
                                  PROVIDER_REGISTRY, openai_compatible_call)
 
 
+@pytest.fixture
+def simple_mbpp_task() -> MBPPTaskInput:
+    return MBPPTaskInput(
+        task_id="1", task_definition="Write a function that returns the square"
+        " of a numbers.", function_definition="def square(n):",
+        test_imports=[],
+        test_list=["assert square(3) == 9", "assert square(0) == 0"])
+
+
+def _make_loop(llm, sandbox, max_iterations=5) -> AgentLoop:
+    return AgentLoop(llm_manager=llm, sandbox_client=sandbox,
+                     system_prompt="You are a coding assistant.",
+                     max_iterations=max_iterations, max_input_tokens=10000,
+                     max_output_tokens=2000)
+
+
+def _make_llm_mock(responses: list[str]) -> MagicMock:
+    llm = MagicMock()
+    llm.current_model = "test-model"
+    call_count = [0]
+
+    def complete(request):
+        idx = min(call_count[0], len(responses) - 1)
+        call_count[0] += 1
+        resp = LLMResponse(content=responses[idx], input_tokens=50,
+                           output_tokens=30, request_time_ms=100.0,
+                           model_name="test-model", api_url="http://test")
+        return resp, 0
+    llm.complete.side_effect = complete
+    return llm
+
+
+def _make_request(model: str = "test-model") -> LLMRequest:
+    return LLMRequest(
+        model=model, messages=[Message(role="user", content="Hello")],
+        provider_url="https://openrouter.ai/api/v1", api_key="test-key",
+        stop_sequences=["<end_code>"])
+
+
 class TestCodeExtractor:
     def setup_method(self):
         self.ex = CodeExtractor()
@@ -139,45 +178,23 @@ class TestSandboxResult:
         obs = r.as_observation()
         assert "no output" in obs.lower()
 
-    def test_final_answer_not_in_observation(self):
-        r = SandboxResult(success=True, stdout="done",
-                          final_answer="my solution")
+    def test_stderr_included(self):
+        r = SandboxResult(success=True, stdout="ok",
+                          stderr="warning: something")
         obs = r.as_observation()
-        assert "done" in obs
+        assert "warning: something" in obs
 
 
 class TestAgentLoop:
-    def _make_loop(self, llm_mock, sandbox_mock):
-        return AgentLoop(llm_manager=llm_mock, sandbox_client=sandbox_mock,
-                         system_prompt="You are a coding assistant.",
-                         max_iterations=5, max_input_tokens=10000,
-                         max_output_tokens=2000)
-
-    def _make_llm(self, responses: list[str]):
-        llm = MagicMock()
-        llm.current_model = "test-model"
-        call_count = [0]
-
-        def complete(request):
-            idx = min(call_count[0], len(responses) - 1)
-            call_count[0] += 1
-            resp = LLMResponse(content=responses[idx], input_tokens=50,
-                               output_tokens=30, request_time_ms=100.0,
-                               model_name="test-model", api_url="http://test")
-            return resp, 0
-        llm.complete.side_effect = complete
-        return llm
-
     def test_successful_run_one_iteration(self):
-        llm = self._make_llm(["Thought: I'll write and submit.\n```python\n"
+        llm = _make_llm_mock(["Thought: solve it.\n```python\n"
                               "final_answer('def foo(): return 1')\n```"
                               "<end_code>"])
         sandbox = MagicMock()
         sandbox.execute.return_value = SandboxResult(
             success=True, stdout="submitted",
             final_answer="def foo(): return 1")
-        loop = self._make_loop(llm, sandbox)
-        result = loop.run("test_1", "mbpp", "Write foo()")
+        result = _make_loop(llm, sandbox).run("test_1", "mbpp", "Write foo()")
         assert result.success
         assert result.solution == "def foo(): return 1"
         assert result.iterations == 1
@@ -185,21 +202,20 @@ class TestAgentLoop:
         assert result.steps[0].sandbox_input != ""
 
     def test_no_code_block_feedback(self):
-        llm = self._make_llm(["I think the answer is 42."
+        llm = _make_llm_mock(["I think the answer is 42."
                               "```python\nfinal_answer('def foo(): return 42')"
                               "\n```\n<end_code>"])
         sandbox = MagicMock()
         sandbox.execute.return_value = SandboxResult(
             success=True, stdout="", final_answer="def foo(): return 42")
-        loop = self._make_loop(llm, sandbox)
-        result = loop.run("test_2", "mbpp", "Write foo()")
+        result = _make_loop(llm, sandbox).run("test_2", "mbpp", "Write foo()")
         assert result.success
         assert result.iterations == 2
         assert result.steps[0].sandbox_input == ""
         assert "[SANDBOX]" in result.steps[0].sandbox_output
 
     def test_limit_enforcement(self):
-        llm = self._make_llm(["Just thinking..." for _ in range(10)])
+        llm = _make_llm_mock(["Just thinking..." for _ in range(10)])
         sandbox = MagicMock()
         loop = AgentLoop(llm_manager=llm, sandbox_client=sandbox,
                          system_prompt="test", max_iterations=3,
@@ -210,19 +226,19 @@ class TestAgentLoop:
         assert "max_iterations" in (result.error or "")
 
     def test_step_metrics_populated(self):
-        llm = self._make_llm(["```python\nfinal_answer('solution')\n```\n"
+        llm = _make_llm_mock(["```python\nfinal_answer('solution')\n```\n"
                               "<end_code>"])
         sandbox = MagicMock()
         sandbox.execute.return_value = SandboxResult(
             success=True, stdout="ok", final_answer="solution")
-        loop = self._make_loop(llm, sandbox)
-        result = loop.run("t", "mbpp", "task")
+        result = _make_loop(llm, sandbox).run("t4", "mbpp", "task")
         step = result.steps[0]
         assert step.step == 1
         assert step.input_tokens == 50
         assert step.output_tokens == 30
         assert step.request_time_ms == 100.0
         assert step.model_name == "test-model"
+        assert step.api_url == "http://test"
         assert step.llm_output != ""
         assert step.sandbox_input != ""
         assert step.sandbox_output != ""
@@ -233,10 +249,33 @@ class TestAgentLoop:
         llm.current_model = "test-model"
         llm.complete.return_value = (None, 4)
         sandbox = MagicMock()
-        loop = self._make_loop(llm, sandbox)
-        result = loop.run("t", "mbpp", "task")
+        result = _make_loop(llm, sandbox).run("t5", "mbpp", "task")
         assert not result.success
         assert "LLM API failed" in (result.error or "")
+
+    def test_token_accumulation(self):
+        llm = _make_llm_mock([
+            "```python\nprint('step1')\n```\n<end_code>"
+            "```python\nfinal_answer('sol')\n```\n<end_code>"])
+        sandbox = MagicMock()
+        sandbox.execute.side_effect = [
+            SandboxResult(success=True, stdout="step1 output"),
+            SandboxResult(success=True, stdout="", final_answer="sol")]
+        result = _make_loop(llm, sandbox).run("t6", "mbpp", "task")
+        assert result.total_input_tokens == 100
+        assert result.total_output_tokens == 60
+        assert result.total_requests == 2
+
+    def test_system_prompt_in_output(self):
+        llm = _make_llm_mock(["```python\nfinal_answer('x')\n```<end_code>"])
+        sandbox = MagicMock()
+        sandbox.execute.return_value = SandboxResult(
+            success=True, stdout="", final_answer="x")
+        loop = AgentLoop(llm_manager=llm, sandbox_client=sandbox,
+                         system_prompt="MY CUSTOM PROMPT", max_iterations=5,
+                         max_input_tokens=10000, max_output_tokens=2000)
+        result = loop.run("t7", "mbpp", "task")
+        assert result.system_prompt == "MY CUSTOM PROMPT"
 
 
 class TestLLMManager:
@@ -272,6 +311,23 @@ class TestLLMManager:
         monkeypatch.delenv("EMPTYP_API_KEY", raising=False)
         with pytest.raises(ValueError, match="No API keys"):
             LLMManager.from_env("emptyp", "model", "http://test")
+
+    def test_request_not_mutated(self):
+        mgr = LLMManager("openrouter", "m", "http://test", ["mykey"])
+        captured = {}
+
+        def mock_fn(req):
+            captured["key"] = req.api_key
+            return LLMResponse(content="ok", input_tokens=1, output_tokens=1,
+                               request_time_ms=1, model_name="m",
+                               api_url="http://test")
+        mgr._call_fn = mock_fn
+        original_req = LLMRequest(
+            model="m", messages=[Message(role="user", content="hi")],
+            api_key="")
+        mgr.complete(original_req)
+        assert captured["key"] == "mykey"
+        assert original_req.api_key == ""
 
 
 class TestSolutionOutput:
@@ -341,14 +397,7 @@ class TestSWEBenchTaskInput:
         assert task.hints_text == ""
 
 
-def _make_request(model: str = "test-model") -> LLMRequest:
-    return LLMRequest(
-        model=model, messages=[Message(role="user", content="Hello")],
-        provider_url="https://openrouter.ai/api/v1", api_key="test-key",
-        stop_sequences=["<end_code>"])
-
-
-class TestOpenAICompatibleCall:
+class TestProviders:
     def test_successful_call(self):
         mock_resp = MagicMock()
         mock_resp.status_code = 200
@@ -404,11 +453,3 @@ class TestOpenAICompatibleCall:
                     "together", "fireworks"}
         assert expected.issubset(set(PROVIDER_REGISTRY.keys()))
 
-
-@pytest.fixture
-def simple_mbpp_task() -> MBPPTaskInput:
-    return MBPPTaskInput(
-        task_id="1", task_definition="Write a function that returns the square"
-        " of a numbers.", function_definition="def square(n):",
-        test_imports=[],
-        test_list=["assert square(3) == 9", "assert square(0) == 0"])

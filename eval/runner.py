@@ -58,6 +58,9 @@ def main() -> None:
         if args.benchmark == "mbpp":
             ok = run_mbpp_task(task_file, out_file, args.model, args.provider,
                                args.provider_url, max_iter)
+        else:
+            ok = run_swebench_task(task_file, out_file, args.model,
+                                   args.provider, args.provider_url, max_iter)
         results.append({"task": task_file.name, "success": ok,
                         "output": str(out_file)})
         logger.info("   -> %s", "PASS" if ok else "FAIL")

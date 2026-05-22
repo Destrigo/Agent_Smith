@@ -15,7 +15,7 @@ class LLMRequest(BaseModel):
     max_tokens: int = 1024
     temperature: float = 0.0
     stop_sequences: list[str] = Field(default_factory=lambda: [
-        "<end_code>", "```\\nObservation:"],
+        "<end_code>", "Observation:"],
         description="Stop the model BEFORE it hallucinates execution output")
     provider_url: str = ""
     api_key: str = ""

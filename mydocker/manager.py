@@ -69,7 +69,7 @@ class DockerManager:
 
     def _inject_eval_script(self, eval_script: str) -> None:
         self.write_file("/tmp/eval_script.sh", eval_script)
-        self.exec_run("chmod + x /tmp/eval_script.sh")
+        self.exec_run("chmod +x /tmp/eval_script.sh")
         logger.debug("Eval script injected at /tmp/eval_script.sh")
 
     def start(self, image: str, eval_script: str) -> str:

@@ -49,7 +49,7 @@ class _DockerStubClient:
 
     def execute(self, code: str) -> SandboxResult:
         mgr = self._mgr
-        answers = list[str] = []
+        answers: list[str] = []
 
         def run_in_container(cmd: str, workdir: str = "/testbed") -> str:
             return mgr.exec_run(cmd, workdir)
@@ -80,7 +80,7 @@ class _DockerStubClient:
                 tar_info.size = len(file_data)
                 tar.addfile(tar_info, io.BytesIO(file_data))
             tar_stream.seek(0)
-            success = self._container.put_archive(parent_dir, tar_stream)
+            success = mgr._container.put_archive(parent_dir, tar_stream)
             if not success:
                 return f"Error: failed to write updated file to {filepath}."
             return "File edited successfully."
@@ -154,7 +154,8 @@ class _DockerStubClient:
                 memory_usage_mb=0.0)
 
 
-def _make_sandbox_client(container_id: str, task: SWEBenchTaskInput):
+def _make_sandbox_client(container_id: str, task: SWEBenchTaskInput,
+                         docker_mgr: DockerManager):
     """
     Connect to Agent A's sandbox, configured with SWE-bench MCP tools
     that bridge into the Docker container.
@@ -170,7 +171,7 @@ def _make_sandbox_client(container_id: str, task: SWEBenchTaskInput):
         return Sandbox(config, mcp_stdio=mcp_cmd)
     except ImportError:
         logging.warning("Sandbox module not found - using DockerStubClient")
-        return _DockerStubClient(container_id, task)
+        return _DockerStubClient(docker_mgr, task)
 
 
 def main() -> None:
@@ -211,7 +212,7 @@ def main() -> None:
         llm = LLMManager.from_env(
             provider=args.provider, model=args.model_name,
             provider_url=args.provider_url)
-        sandbox = _make_sandbox_client(container_id, task)
+        sandbox = _make_sandbox_client(container_id, task, docker_mgr)
         loop = AgentLoop(
             llm_manager=llm, sandbox_client=sandbox,
             system_prompt=system_prompt, max_iterations=args.max_iterations,
