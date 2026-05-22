@@ -2,6 +2,7 @@ from pydantic import BaseModel, Field
 from typing import List
 from datetime import datetime
 
+
 class StepMetrics(BaseModel):
     """Metrics for a single agent step."""
     step: int

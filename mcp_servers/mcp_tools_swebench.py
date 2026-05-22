@@ -1,4 +1,4 @@
-from mcp_server import mcp_server
+# from mcp_server import mcp_server
 import shared_tools.execution.get_patch
 import shared_tools.execution.run_command
 import shared_tools.execution.run_tests
