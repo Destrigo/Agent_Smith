@@ -106,8 +106,7 @@ class _DockerStubClient:
                     f"grep -rn --include='*.py' '{name}' /testbed 2>/dev/null "
                     "| head -20")
                 if result.strip():
-                    result = "[No exact definition found. Broad matches:]\n"
-                    f"{result}"
+                    result = "[No definition found. Broad matches:]\n{result}"
             return result
 
         def find_references(name: str, filepath: str = "", line: int = 0

@@ -49,7 +49,8 @@ def openai_compatible_call(request: LLMRequest,
     url = request.provider_url.rstrip("/") + "/chat/completions"
     payload: dict[str, Any] = {
         "model": request.model,
-        "messages": [m.model_dump() for m in request.messages],
+        "messages": [m.model_dump(exclude_none=True)
+                     for m in request.messages],
         "max_tokens": request.max_tokens,
         "temperature": request.temperature}
     if request.stop_sequences:
@@ -84,6 +85,10 @@ def _together(request: LLMRequest) -> LLMResponse:
     return openai_compatible_call(request)
 
 
+def _fireworks(request: LLMRequest) -> LLMResponse:
+    return openai_compatible_call(request)
+
+
 PROVIDER_REGISTRY: dict[str, Callable[[LLMRequest], LLMResponse]] = {
     "openrouter": _openrouter,
     "groq": _groq,
@@ -91,4 +96,5 @@ PROVIDER_REGISTRY: dict[str, Callable[[LLMRequest], LLMResponse]] = {
     "mistral": _mistral,
     "cohere": _cohere,
     "together": _together,
+    "fireworks": _fireworks,
 }

@@ -32,7 +32,7 @@ class AgentState(BaseModel):
 
     def within_limits(self) -> tuple[bool, str]:
         if self.iteration >= self.max_iterations:
-            return False, f"max_iteration={self.max_iterations} reached"
+            return False, f"max_iterations={self.max_iterations} reached"
         if self.total_input_tokens >= self.max_input_tokens:
             return False, f"max_input_tokens={self.max_input_tokens} exceeded"
         if self.total_output_tokens >= self.max_output_tokens:

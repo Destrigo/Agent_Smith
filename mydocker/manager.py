@@ -48,7 +48,7 @@ class DockerManager:
         content_bytes = content.encode("utf-8")
         tar_buffer = io.BytesIO()
         filename = os.path.basename(container_path)
-        dirpath = os.path.dirname(container_path)
+        dirpath = os.path.dirname(container_path) or "/"
         with tarfile.open(fileobj=tar_buffer, mode="w") as tar:
             info = tarfile.TarInfo(name=filename)
             info.size = len(content_bytes)

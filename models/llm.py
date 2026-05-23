@@ -1,11 +1,10 @@
-from typing import Any, Optional, Literal
+from typing import Any, Literal
 from pydantic import BaseModel, Field
 
 
 class Message(BaseModel):
-    role: Literal["system", "user", "assistant", "tool"]
+    role: Literal["system", "user", "assistant"]
     content: str
-    tool_name: Optional[str] = None
 
 
 class LLMRequest(BaseModel):

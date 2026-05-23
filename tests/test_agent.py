@@ -117,7 +117,7 @@ class TestCodeExtractor:
 
 class TestAgentState:
     def test_within_limits_initially(self):
-        state = AgentState(task="1", benchmark="mbpp", max_iterations=10,
+        state = AgentState(task_id="1", benchmark="mbpp", max_iterations=10,
                            max_input_tokens=6000, max_output_tokens=1500)
         ok, reason = state.within_limits()
         assert ok
@@ -202,7 +202,7 @@ class TestAgentLoop:
         assert result.steps[0].sandbox_input != ""
 
     def test_no_code_block_feedback(self):
-        llm = _make_llm_mock(["I think the answer is 42."
+        llm = _make_llm_mock(["I think the answer is 42.",
                               "```python\nfinal_answer('def foo(): return 42')"
                               "\n```\n<end_code>"])
         sandbox = MagicMock()
