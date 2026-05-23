@@ -1,0 +1,37 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "agent-smith"
+version = "0.1.0"
+description = "LLM agent with secure sandbox and MCP tool integration"
+requires-python = ">=3.11"
+dependencies = [
+    "pydantic>=2.0",
+    "mcp>=1.0",
+    "anthropic>=0.34",
+    "httpx>=0.27",
+    "anyio>=4.0",
+]
+
+[project.scripts]
+sandbox      = "sandbox.cli:main"
+mcp-mbpp     = "mcp_servers.mcp_tools_mbpp:main"
+mcp-swebench = "mcp_servers.mcp_tools_swebench:main"
+
+[tool.hatch.build.targets.wheel]
+packages = [
+    "sandbox",
+    "models",
+    "mcp_servers",
+    "agent",
+    "eval",
+    "docker",
+    "utils",
+    "config",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]

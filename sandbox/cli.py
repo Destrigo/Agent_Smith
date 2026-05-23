@@ -1,47 +1,117 @@
+"""
+sandbox CLI entry point.
+
+    uv run sandbox                            interactive REPL, default config
+    uv run sandbox sandbox_template.json      load config from file
+    uv run sandbox cfg.json --mcp-stdio "python mcp_tools_mbpp.py"
+    uv run sandbox cfg.json --mcp-server http://localhost:8000
+"""
+
 import argparse
 import json
+import sys
 
-from sandbox_model import SandboxConfig
-from sandbox import Sandbox
+from models.sandbox_model import SandboxConfig
+from sandbox.core.sandbox import Sandbox
 
 
-def main():
+def _read_multiline(prompt: str) -> str:
+    """Read code from stdin until a blank line is entered."""
+    print(prompt)
+    lines = []
+    while True:
+        try:
+            line = input("... " if lines else ">>> ")
+        except EOFError:
+            break
+        if line == "" and lines:
+            break
+        lines.append(line)
+    return "\n".join(lines)
 
-    parser = argparse.ArgumentParser()
 
-    parser.add_argument("config", nargs="?", default=None)
-    parser.add_argument("--mcp-stdio", default=None)
-    parser.add_argument("--mcp-server", default=None)
-
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        prog="sandbox",
+        description="Run LLM-generated Python code in an isolated sandbox.",
+    )
+    parser.add_argument(
+        "config",
+        nargs="?",
+        default=None,
+        help="Path to a SandboxConfig JSON file (optional).",
+    )
+    parser.add_argument(
+        "--mcp-stdio",
+        metavar="COMMAND",
+        default=None,
+        help="Launch an MCP server subprocess and connect via stdio.",
+    )
+    parser.add_argument(
+        "--mcp-server",
+        metavar="URL",
+        default=None,
+        help="Connect to an already-running MCP server via streamable HTTP.",
+    )
     args = parser.parse_args()
 
+    # --- Config -------------------------------------------------------
     if args.config:
         with open(args.config, "r") as f:
             config_data = json.load(f)
         config = SandboxConfig(**config_data)
-
     else:
         config = SandboxConfig()
 
-    print("Sandbox started")
-    print(config)
-
-    if args.mcp_stdio:
-        print("Using MCP stdio:", args.mcp_stdio)
-
-    if args.mcp_server:
-        print("Using MCP server:", args.mcp_server)
-
     sandbox = Sandbox(config)
 
-    while True:
+    # --- MCP connection -----------------------------------------------
+    if args.mcp_stdio or args.mcp_server:
+        try:
+            from mcp_servers.mcp_client import MCPClient
 
-        print("\nEnter code:")
-        code = input(">>> ")
+            client = MCPClient()
+
+            if args.mcp_stdio:
+                cmd_parts = args.mcp_stdio.split()
+                client.connect_stdio(cmd_parts[0], cmd_parts[1:])
+                print(f"[sandbox] Connected to MCP server via stdio: {args.mcp_stdio}")
+            else:
+                client.connect_http(args.mcp_server)
+                print(f"[sandbox] Connected to MCP server via HTTP: {args.mcp_server}")
+
+            tools = client.make_tool_wrappers()
+            sandbox.register_mcp_tools(tools)
+            print(f"[sandbox] Registered {len(tools)} MCP tools: {list(tools)}")
+
+        except Exception as exc:
+            print(f"[sandbox] WARNING: could not connect to MCP server — {exc}",
+                  file=sys.stderr)
+
+    # --- REPL ---------------------------------------------------------
+    print("\n[sandbox] Ready.  Enter Python code (blank line to execute, Ctrl-D to quit).\n")
+
+    while True:
+        try:
+            code = _read_multiline("Enter code:")
+        except KeyboardInterrupt:
+            print()
+            continue
+
+        if not code.strip():
+            continue
 
         result = sandbox.execute(code)
 
-        print(result)
+        if result["stdout"]:
+            print(result["stdout"], end="")
+        if result["stderr"]:
+            print(result["stderr"], end="", file=sys.stderr)
+        if result["error"]:
+            print(f"[error] {result['error']}", file=sys.stderr)
+        if result["final_answer"] is not None:
+            print(f"\n[final_answer] {result['final_answer']}")
+            break
 
 
 if __name__ == "__main__":
