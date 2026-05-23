@@ -17,19 +17,50 @@ class FinalAnswerSignal(BaseException):
 
 # Modules that must never be importable regardless of the allowlist.
 _BLOCKED_MODULES: frozenset = frozenset({
-    "os", "sys", "subprocess", "socket", "urllib", "http", "ftplib",
-    "smtplib", "ssl", "shutil", "importlib", "ctypes", "cffi",
-    "multiprocessing", "threading", "concurrent", "asyncio",
-    "pickle", "shelve", "marshal", "tempfile", "signal", "resource",
-    "pty", "rlcompleter", "code", "codeop", "readline",
-    "_thread", "gc", "weakref",
+    "os",
+    "sys",
+    "subprocess",
+    "socket",
+    "urllib",
+    "http",
+    "ftplib",
+    "smtplib",
+    "ssl",
+    "shutil",
+    "importlib",
+    "ctypes",
+    "cffi",
+    "multiprocessing",
+    "threading",
+    "concurrent",
+    "asyncio",
+    "pickle",
+    "shelve",
+    "marshal",
+    "tempfile",
+    "signal",
+    "resource",
+    "pty",
+    "rlcompleter",
+    "code",
+    "codeop",
+    "readline",
+    "_thread",
+    "gc",
+    "weakref",
 })
 
 # Builtins that are always removed from the sandbox namespace.
 _BLOCKED_BUILTINS: frozenset = frozenset({
-    "eval", "exec", "compile", "__import__",
-    "open", "input",
-    "__loader__", "__spec__", "__build_class__",
+    "eval",
+    "exec",
+    "compile",
+    "__import__",
+    "open",
+    "input",
+    "__loader__",
+    "__spec__",
+    "__build_class__",
     "breakpoint",
 })
 
@@ -61,10 +92,6 @@ class Sandbox:
         self._namespace: Dict[str, Any] = {}
         self._setup_namespace()
 
-    # ------------------------------------------------------------------
-    # Namespace setup
-    # ------------------------------------------------------------------
-
     def _setup_namespace(self) -> None:
         self._namespace = {
             "__builtins__": self._make_safe_builtins(),
@@ -76,16 +103,8 @@ class Sandbox:
         for name, fn in tools.items():
             self._namespace[name] = fn
 
-    # ------------------------------------------------------------------
-    # final_answer
-    # ------------------------------------------------------------------
-
     def _final_answer_fn(self, answer: str) -> None:
         raise FinalAnswerSignal(str(answer))
-
-    # ------------------------------------------------------------------
-    # Restricted builtins
-    # ------------------------------------------------------------------
 
     def _make_safe_builtins(self) -> dict:
         safe = {
@@ -95,10 +114,6 @@ class Sandbox:
         safe["__import__"] = self._restricted_import
         safe["open"] = self._restricted_open
         return safe
-
-    # ------------------------------------------------------------------
-    # Import restriction
-    # ------------------------------------------------------------------
 
     def _is_import_allowed(self, name: str) -> bool:
         base = name.split(".")[0]
@@ -130,10 +145,6 @@ class Sandbox:
             )
         return _builtins.__import__(name, globals, locals, fromlist, level)
 
-    # ------------------------------------------------------------------
-    # Filesystem restriction
-    # ------------------------------------------------------------------
-
     def _restricted_open(self, path, mode="r", *args, **kwargs):
         abs_path = os.path.realpath(str(path))
         for allowed in self.config.allowed_directories:
@@ -144,10 +155,6 @@ class Sandbox:
             f"File access to '{path}' is not allowed. "
             f"Allowed directories: {self.config.allowed_directories}"
         )
-
-    # ------------------------------------------------------------------
-    # Code execution
-    # ------------------------------------------------------------------
 
     def execute(self, code: str) -> dict:
         """

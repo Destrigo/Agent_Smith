@@ -55,7 +55,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    # --- Config -------------------------------------------------------
+    # setup
     if args.config:
         with open(args.config, "r") as f:
             config_data = json.load(f)
@@ -65,7 +65,7 @@ def main() -> None:
 
     sandbox = Sandbox(config)
 
-    # --- MCP connection -----------------------------------------------
+    # MCP connection
     if args.mcp_stdio or args.mcp_server:
         try:
             from mcp_servers.mcp_client import MCPClient
@@ -88,7 +88,7 @@ def main() -> None:
             print(f"[sandbox] WARNING: could not connect to MCP server — {exc}",
                   file=sys.stderr)
 
-    # --- REPL ---------------------------------------------------------
+    #repl
     print("\n[sandbox] Ready.  Enter Python code (blank line to execute, Ctrl-D to quit).\n")
 
     while True:

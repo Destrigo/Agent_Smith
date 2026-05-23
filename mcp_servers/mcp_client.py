@@ -24,10 +24,7 @@ class MCPClient:
         self._transport_ctx = None
         self._session_ctx = None
 
-    # ------------------------------------------------------------------
     # Public connect API (sync wrappers)
-    # ------------------------------------------------------------------
-
     def connect_stdio(self, command: str, args: list = None) -> None:
         """Launch *command* as a subprocess and connect via stdio transport."""
         self._loop.run_until_complete(
@@ -37,11 +34,8 @@ class MCPClient:
     def connect_http(self, url: str) -> None:
         """Connect to an MCP server via streamable-HTTP at *url*."""
         self._loop.run_until_complete(self._connect_http(url))
-
-    # ------------------------------------------------------------------
+    
     # Async connect internals
-    # ------------------------------------------------------------------
-
     async def _connect_stdio(self, command: str, args: list) -> None:
         from mcp import ClientSession, StdioServerParameters
         from mcp.client.stdio import stdio_client
@@ -78,10 +72,7 @@ class MCPClient:
                 "inputSchema": tool.inputSchema or {},
             }
 
-    # ------------------------------------------------------------------
     # Tool discovery
-    # ------------------------------------------------------------------
-
     def discover_tools(self) -> Dict[str, dict]:
         """Return the schema dict for all discovered tools."""
         return dict(self._tools)
@@ -104,10 +95,7 @@ class MCPClient:
             wrappers[name] = _make(name, schema.get("description", ""))
         return wrappers
 
-    # ------------------------------------------------------------------
     # Tool invocation (sync)
-    # ------------------------------------------------------------------
-
     def call_tool(self, tool_name: str, **kwargs: Any) -> Any:
         """Call a remote MCP tool synchronously."""
         if tool_name not in self._tools:
@@ -133,10 +121,7 @@ class MCPClient:
                     return text
         return [getattr(c, "text", str(c)) for c in result.content]
 
-    # ------------------------------------------------------------------
     # Cleanup
-    # ------------------------------------------------------------------
-
     def close(self) -> None:
         async def _close():
             if self._session_ctx is not None:
