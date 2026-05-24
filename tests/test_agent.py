@@ -236,7 +236,8 @@ class TestAgentLoop:
         assert step.step == 1
         assert step.input_tokens == 50
         assert step.output_tokens == 30
-        assert step.request_time_ms == 100.0
+        assert isinstance(step.request_time_ms, float)
+        assert step.request_time_ms >= 0.0
         assert step.model_name == "test-model"
         assert step.api_url == "http://test"
         assert step.llm_output != ""
@@ -452,4 +453,3 @@ class TestProviders:
         expected = {"openrouter", "groq", "gemini", "mistral", "cohere",
                     "together", "fireworks"}
         assert expected.issubset(set(PROVIDER_REGISTRY.keys()))
-

@@ -36,12 +36,20 @@ class AgentLoop:
 
     def _execute(self, code: str) -> SandboxResult:
         try:
-            return self.sandbox.execute(code)
+            raw = self.sandbox.execute(code)
         except Exception as exc:
             logger.error("Sandbox call failed: %s", exc)
             return SandboxResult(success=False, stdout="", stderr="",
                                  error=f"Sandbox communication error : {exc}",
                                  execution_time_ms=0.0, memory_usage_mb=0.0)
+        if isinstance(raw, SandboxResult):
+            return raw
+        return SandboxResult(
+            success=raw.get("success", False), stdout=raw.get("stdout", ""),
+            stderr=raw.get("stderr", ""), error=raw.get("error"),
+            execution_time_ms=raw.get("execution_time_ms", 0.0),
+            memory_usage_mb=raw.get("memory_usage_mb", 0.0),
+            final_answer=raw.get("final_answer"))
 
     def run(self, task_id: str, benchmark: str, user_message: str
             ) -> SolutionOutput:
@@ -65,7 +73,9 @@ class AgentLoop:
             state.iteration += 1
             logger.info("--- Iteration %d ---", state.iteration)
 
+            t0 = time.perf_counter()
             llm_response, retries = self._call_llm(state)
+            request_time_ms = (time.perf_counter() - t0) * 1000.0
             if llm_response is None:
                 state.failed = True
                 state.error = "LLM API failed after all retries"
@@ -103,7 +113,7 @@ class AgentLoop:
             step = StepMetrics(step=state.iteration,
                                input_tokens=llm_response.input_tokens,
                                output_tokens=llm_response.output_tokens,
-                               request_time_ms=llm_response.request_time_ms,
+                               request_time_ms=request_time_ms,
                                api_url=llm_response.api_url,
                                model_name=llm_response.model_name,
                                llm_output=llm_response.content,

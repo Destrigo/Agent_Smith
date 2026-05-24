@@ -17,7 +17,7 @@ from mydocker.manager import DockerManager
 from utils.logger import setup_logging
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
+PROJECT_ROOT = Path(__file__).resolve().parent
 load_dotenv()
 
 
@@ -35,6 +35,20 @@ def build_task_message(task: SWEBenchTaskInput) -> str:
         "When done, call final_answer(get_patch())."
     )
     return msg
+
+
+def _build_system_prompt(sandbox) -> str:
+    manual = ""
+    if hasattr(sandbox, "get_manual"):
+        try:
+            manual = sandbox.get_manual()
+        except Exception:
+            pass
+    prompt_path = PROJECT_ROOT / "agent" / "prompts" / "swebench_prompt.txt"
+    static_prompt = prompt_path.read_text(encoding="utf-8")
+    if manual:
+        return static_prompt + "\n\n" + manual
+    return static_prompt
 
 
 class _DockerStubClient:
@@ -106,7 +120,7 @@ class _DockerStubClient:
                     f"grep -rn --include='*.py' '{name}' /testbed 2>/dev/null "
                     "| head -20")
                 if result.strip():
-                    result = "[No definition found. Broad matches:]\n{result}"
+                    result = f"[No definition found. Broad matches:]\n{result}"
             return result
 
         def find_references(name: str, filepath: str = "", line: int = 0
@@ -154,11 +168,12 @@ class _DockerStubClient:
 
 
 def _make_sandbox_client(container_id: str, task: SWEBenchTaskInput,
-                         docker_mgr: DockerManager):
+                         docker_mgr: DockerManager, eval_script_path: str):
     """
     Connect to Agent A's sandbox, configured with SWE-bench MCP tools
     that bridge into the Docker container.
     """
+    os.environ["SANDBOX_EVAL_SCRIPT"] = eval_script_path
     try:
         from sandbox.core.sandbox import Sandbox
         from sandbox.config import SandboxConfig
@@ -181,6 +196,9 @@ def main() -> None:
     parser.add_argument("--provider-url", required=True)
     parser.add_argument("--provider", default="openrouter")
     parser.add_argument("--max-iterations", type=int, default=30)
+    parser.add_argument("--max-input-tokens", type=int, default=300000)
+    parser.add_argument("--max-output-tokens", type=int, default=10000)
+    parser.add_argument("--timeout", type=int, default=900)
     parser.add_argument("--log-level", default="INFO")
     args = parser.parse_args()
     setup_logging(args.log_level)
@@ -191,27 +209,27 @@ def main() -> None:
     docker_mgr = DockerManager()
 
     def _cleanup(sig=None, frame=None):
-        logger.info("Signal received - cleaning up Docker container...")
+        logger.info("Signal %s - cleaning up Docker container...", sig)
         docker_mgr.cleanup()
-        sys.exit(1)
+        sys.exit(0)
 
     signal.signal(signal.SIGINT, _cleanup)
     signal.signal(signal.SIGTERM, _cleanup)
-
+    result: SolutionOutput
     try:
         logger.info("Starting Docker container: %s", task.docker_image)
         container_id = docker_mgr.start(image=task.docker_image,
                                         eval_script=task.eval_script)
         logger.info("Container ready: %s", container_id[:12])
 
-        prompt_path = (PROJECT_ROOT / "agent" / "prompts"
-                       / "swebench_prompt.txt")
-        system_prompt = prompt_path.read_text(encoding="utf-8")
+        eval_script_path = "/tmp/eval_script.sh"
+        sandbox = _make_sandbox_client(container_id, task, docker_mgr,
+                                       eval_script_path)
 
+        system_prompt = _build_system_prompt(sandbox)
         llm = LLMManager.from_env(
             provider=args.provider, model=args.model_name,
             provider_url=args.provider_url)
-        sandbox = _make_sandbox_client(container_id, task, docker_mgr)
         loop = AgentLoop(
             llm_manager=llm, sandbox_client=sandbox,
             system_prompt=system_prompt, max_iterations=args.max_iterations,

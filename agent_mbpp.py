@@ -2,14 +2,18 @@ import argparse
 import logging
 import sys
 from pathlib import Path
+import io
+import os
+import contextlib
 from dotenv import load_dotenv
+from models.sandbox import SandboxResult
 from models.task import MBPPTaskInput
 from agent.llm.manager import LLMManager
 from agent.core.agent_loop import AgentLoop
 from utils.logger import setup_logging
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
+PROJECT_ROOT = Path(__file__).resolve().parent
 load_dotenv()
 
 
@@ -26,6 +30,20 @@ def build_task_message(task: MBPPTaskInput) -> str:
         "then final_answer() to submit.")
 
 
+def _build_system_prompt(sandbox) -> str:
+    manual = ""
+    if hasattr(sandbox, "get_manual"):
+        try:
+            manual = sandbox.get_manual()
+        except Exception:
+            pass
+    prompt_path = PROJECT_ROOT / "agent" / "prompt" / "mbpp_prompt.txt"
+    static_prompt = prompt_path.read_text(encode="utf-8")
+    if manual:
+        return static_prompt + "\n\n" + manual
+    return static_prompt
+
+
 class _StubSandboxClient:
     """
     Development stub that runs code locally (no security restrictions).
@@ -35,10 +53,6 @@ class _StubSandboxClient:
         self._task = task
 
     def execute(self, code: str):
-        from models.sandbox import SandboxResult
-        import io
-        import contextlib
-
         def run_tests(solution_code: str) -> str:
             try:
                 namespace: dict = {}
@@ -74,8 +88,9 @@ class _StubSandboxClient:
                 memory_usage_mb=0.0)
 
 
-def make_sandbox_client(provider_url: str, model_name: str,
-                        task: MBPPTaskInput):
+def make_sandbox_client(task: MBPPTaskInput):
+    test_lines = list(task.test_imports) + list(task.test_list)
+    os.environ["SANDBOX_TEST_CODE"] = "\n".join(test_lines)
     try:
         from sandbox.core.sandbox import Sandbox
         from sandbox.config import SandboxConfig
@@ -100,6 +115,9 @@ def main() -> None:
     parser.add_argument("--provider", default="openrouter",
                         help="Provider name for key lookup")
     parser.add_argument("--max-iterations", type=int, default=10)
+    parser.add_argument("--max-input-tokens", type=int, default=6000)
+    parser.add_argument("--max-output-tokens", type=int, default=1500)
+    parser.add_argument("--timeout", type=int, default=120)
     parser.add_argument("--log-level", default="INFO")
     args = parser.parse_args()
     setup_logging(args.log_level)
@@ -119,7 +137,7 @@ def main() -> None:
     llm = LLMManager.from_env(provider=args.provider, model=args.model_name,
                               provider_url=args.provider_url)
 
-    sandbox = make_sandbox_client(args.provider_url, args.model_name, task)
+    sandbox = make_sandbox_client(task)
 
     loop = AgentLoop(
         llm_manager=llm, sandbox_client=sandbox, system_prompt=system_prompt,
