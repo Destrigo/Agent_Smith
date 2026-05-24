@@ -6,6 +6,12 @@ import threading
 from contextlib import redirect_stderr, redirect_stdout
 from typing import Any, Dict, List, Optional
 
+try:
+    import resource as _resource
+    _HAS_RESOURCE = True
+except ImportError:
+    _HAS_RESOURCE = False  # Windows / restricted environments
+
 from models.sandbox_model import SandboxConfig
 
 
@@ -273,6 +279,25 @@ class Sandbox:
         fa_holder: List[str] = []
 
         def _run() -> None:
+            # Best-effort memory enforcement via RLIMIT_AS (virtual address
+            # space). This is process-wide on Linux, which is acceptable for
+            # single-task exam runs. We restore the original limit afterward.
+            _orig_as = None
+            if _HAS_RESOURCE and self.config.max_memory_mb > 0:
+                try:
+                    _max = self.config.max_memory_mb * 1024 * 1024
+                    _orig_as = _resource.getrlimit(_resource.RLIMIT_AS)
+                    _cur_soft = _orig_as[0]
+                    _unlimited = _resource.RLIM_INFINITY
+                    # Only lower the limit, never raise it above what's set.
+                    if _cur_soft == _unlimited or _cur_soft > _max:
+                        _resource.setrlimit(
+                            _resource.RLIMIT_AS,
+                            (_max, _orig_as[1]),
+                        )
+                except Exception:
+                    _orig_as = None
+
             try:
                 with redirect_stdout(stdout_buf), redirect_stderr(stderr_buf):
                     exec(code, self._namespace)  # noqa: S102
@@ -280,11 +305,25 @@ class Sandbox:
             except FinalAnswerSignal as fa:
                 outcome["success"] = True
                 fa_holder.append(fa.answer)
+            except MemoryError:
+                exc_holder.append(
+                    MemoryError(
+                        f"[SANDBOX MEMORY LIMIT] Code exceeded the "
+                        f"{self.config.max_memory_mb}MB memory limit."
+                    )
+                )
             except (KeyboardInterrupt, SystemExit):
                 # Must propagate — never silently swallow shutdown signals.
                 raise
             except Exception as exc:
                 exc_holder.append(exc)
+            finally:
+                # Restore original memory limits.
+                if _HAS_RESOURCE and _orig_as is not None:
+                    try:
+                        _resource.setrlimit(_resource.RLIMIT_AS, _orig_as)
+                    except Exception:
+                        pass
 
         thread = threading.Thread(target=_run, daemon=True)
         thread.start()
@@ -325,7 +364,11 @@ class Sandbox:
         # Runtime exception
         if exc_holder:
             exc = exc_holder[0]
-            outcome["error"] = f"{type(exc).__name__}: {exc}"
+            if isinstance(exc, MemoryError):
+                # Already has a [SANDBOX MEMORY LIMIT] prefix from _run().
+                outcome["error"] = str(exc)
+            else:
+                outcome["error"] = f"{type(exc).__name__}: {exc}"
 
         # Build the observation string the agent loop feeds to the LLM
         parts: List[str] = []
