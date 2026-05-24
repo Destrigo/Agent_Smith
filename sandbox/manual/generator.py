@@ -11,7 +11,7 @@ Usage
     from sandbox.manual.generator import generate_manual_from_client
 
     client = MCPClient()
-    client.connect_stdio("python mcp_servers/mcp_tools_swebench.py")
+    client.connect_stdio("python mcp_tools_swebench.py")
     manual = generate_manual_from_client(client)
 
     # From a raw schema dict (e.g. for tests)
