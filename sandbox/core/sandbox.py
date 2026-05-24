@@ -11,6 +11,7 @@ from models.sandbox_model import SandboxConfig
 
 class FinalAnswerSignal(BaseException):
     """Raised inside the sandbox when final_answer() is called."""
+
     def __init__(self, answer: str):
         self.answer = answer
 
@@ -48,6 +49,7 @@ _BLOCKED_MODULES: frozenset = frozenset({
     "_thread",
     "gc",
     "weakref",
+    "builtins",
 })
 
 # Builtins that are always removed from the sandbox namespace.
@@ -64,6 +66,17 @@ _BLOCKED_BUILTINS: frozenset = frozenset({
     "breakpoint",
 })
 
+# Maximum bytes captured from stdout + stderr before truncation.
+_MAX_OUTPUT_BYTES: int = 8192
+
+
+def _truncate(text: str, limit: int) -> tuple[str, bool]:
+    """Return (possibly-truncated text, was_truncated)."""
+    encoded = text.encode("utf-8", errors="replace")
+    if len(encoded) <= limit:
+        return text, False
+    return encoded[:limit].decode("utf-8", errors="replace"), True
+
 
 class Sandbox:
     """
@@ -77,14 +90,24 @@ class Sandbox:
     - Execution is time-limited to SandboxConfig.max_execution_time_seconds.
     - Dangerous builtins (eval, exec, compile, open, …) are removed.
 
+    Feedback contract
+    -----------------
+    The dict returned by execute() always contains an 'observation' key with a
+    human-readable string ready to be appended to the LLM conversation. The LLM
+    is never left guessing about what happened:
+      - No code block found        → caller sets code="" and checks observation
+      - Malformed / interpreted    → caller sets code=cleaned and passes note
+      - Timeout                    → observation says "TIMEOUT" + partial output
+      - Output truncated           → observation says "TRUNCATED"
+      - Normal error               → observation contains the exception text
+      - Success                    → observation contains stdout/stderr output
+
     Design decision — in-process threading
     ---------------------------------------
     We execute code in a daemon thread rather than a subprocess so that the
-    sandbox namespace persists across steps.  The thread is joined with a
+    sandbox namespace persists across steps. The thread is joined with a
     timeout; if it is still alive after the deadline the result is marked as
-    timed-out and the thread is left to die on its own (daemon=True ensures it
-    won't block process exit).  This is the accepted trade-off for persistent
-    state: true process isolation would require serialising the namespace.
+    timed-out. True process isolation would require serialising the namespace.
     """
 
     def __init__(self, config: SandboxConfig):
@@ -135,13 +158,14 @@ class Sandbox:
         base = name.split(".")[0]
         if base in _BLOCKED_MODULES:
             raise ImportError(
-                f"Import of '{name}' is blocked in the sandbox "
+                f"[SANDBOX BLOCKED] Import of '{name}' is blocked "
                 f"(module is on the deny list)."
             )
         if not self._is_import_allowed(name):
             raise ImportError(
-                f"Import of '{name}' is not allowed. "
-                f"Authorized imports: {self.config.authorized_imports}"
+                f"[SANDBOX BLOCKED] Import of '{name}' is not allowed. "
+                f"Authorized imports: "
+                f"{self.config.authorized_imports}"
             )
         return _builtins.__import__(name, globals, locals, fromlist, level)
 
@@ -149,12 +173,62 @@ class Sandbox:
         abs_path = os.path.realpath(str(path))
         for allowed in self.config.allowed_directories:
             allowed_real = os.path.realpath(allowed)
-            if abs_path == allowed_real or abs_path.startswith(allowed_real + os.sep):
+            if abs_path == allowed_real or abs_path.startswith(
+                allowed_real + os.sep
+            ):
                 return _builtins.open(path, mode, *args, **kwargs)
         raise PermissionError(
-            f"File access to '{path}' is not allowed. "
-            f"Allowed directories: {self.config.allowed_directories}"
+            f"[SANDBOX BLOCKED] File access to '{path}' is not allowed. "
+            f"Allowed directories: "
+            f"{self.config.allowed_directories}"
         )
+
+    # ------------------------------------------------------------------
+    # Public helpers for the agent loop — explicit feedback construction
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def no_code_feedback() -> dict:
+        """
+        Return the observation dict when the LLM response had no code block.
+        The agent loop should call this instead of execute() and feed the
+        result back to the LLM so it knows it must emit a code block.
+        """
+        msg = (
+            "[SANDBOX ERROR] No valid Python code block was found in your "
+            "response. You must wrap your code in a markdown code block:\n"
+            "```python\n"
+            "# your code here\n"
+            "```\n"
+            "Please try again."
+        )
+        return {
+            "success": False,
+            "stdout": "",
+            "stderr": "",
+            "error": msg,
+            "final_answer": None,
+            "truncated": False,
+            "observation": msg,
+        }
+
+    @staticmethod
+    def malformed_code_feedback(original: str, interpreted: str) -> str:
+        """
+        Return a warning string when a code block was malformed but the
+        agent loop was able to recover and interpret it anyway.
+        Callers should still execute `interpreted`; prepend this warning
+        to the real execution observation so the LLM knows what happened.
+        """
+        return (
+            f"[SANDBOX WARNING] The code block was malformed. "
+            f"It was interpreted as:\n```python\n{interpreted}\n```\n"
+            f"Original response snippet:\n{original[:200]}"
+        )
+
+    # ------------------------------------------------------------------
+    # Core execution
+    # ------------------------------------------------------------------
 
     def execute(self, code: str) -> dict:
         """
@@ -162,20 +236,25 @@ class Sandbox:
 
         Returns a dict with keys:
             success      bool
-            stdout       str
-            stderr       str
-            error        str | None  — exception message, or timeout/syntax notice
-            final_answer str | None  — value passed to final_answer(), if called
+            stdout       str   (possibly truncated)
+            stderr       str   (possibly truncated)
+            error        str | None  — exception / timeout / truncation note
+            final_answer str | None  — value passed to final_answer(), if any
+            truncated    bool  — True when stdout/stderr were cut
+            observation  str   — ready-to-use feedback string for the LLM
         """
         try:
             ast.parse(code)
         except SyntaxError as e:
+            msg = f"[SANDBOX ERROR] SyntaxError: {e}"
             return {
                 "success": False,
                 "stdout": "",
                 "stderr": "",
-                "error": f"SyntaxError: {e}",
+                "error": msg,
                 "final_answer": None,
+                "truncated": False,
+                "observation": msg,
             }
 
         stdout_buf = io.StringIO()
@@ -187,6 +266,8 @@ class Sandbox:
             "stderr": "",
             "error": None,
             "final_answer": None,
+            "truncated": False,
+            "observation": "",
         }
         exc_holder: List[BaseException] = []
         fa_holder: List[str] = []
@@ -200,6 +281,7 @@ class Sandbox:
                 outcome["success"] = True
                 fa_holder.append(fa.answer)
             except (KeyboardInterrupt, SystemExit):
+                # Must propagate — never silently swallow shutdown signals.
                 raise
             except Exception as exc:
                 exc_holder.append(exc)
@@ -208,22 +290,55 @@ class Sandbox:
         thread.start()
         thread.join(timeout=self.config.max_execution_time_seconds)
 
-        outcome["stdout"] = stdout_buf.getvalue()
-        outcome["stderr"] = stderr_buf.getvalue()
+        # Collect and truncate output
+        raw_stdout = stdout_buf.getvalue()
+        raw_stderr = stderr_buf.getvalue()
+        stdout, stdout_cut = _truncate(raw_stdout, _MAX_OUTPUT_BYTES)
+        stderr, stderr_cut = _truncate(raw_stderr, _MAX_OUTPUT_BYTES)
+        outcome["stdout"] = stdout
+        outcome["stderr"] = stderr
 
-        if thread.is_alive():
-            outcome["error"] = (
-                f"ExecutionTimeout: code exceeded the "
-                f"{self.config.max_execution_time_seconds}s limit. "
-                "Partial output is shown above."
+        if stdout_cut or stderr_cut:
+            outcome["truncated"] = True
+            trunc_note = (
+                f"\n[SANDBOX TRUNCATED] Output exceeded {_MAX_OUTPUT_BYTES} "
+                "bytes and was cut. Only the first portion is shown."
             )
+            outcome["error"] = (outcome.get("error") or "") + trunc_note
+
+        # Timeout check
+        if thread.is_alive():
+            partial = stdout or stderr or "(no output captured)"
+            timeout_msg = (
+                f"[SANDBOX TIMEOUT] Code exceeded the "
+                f"{self.config.max_execution_time_seconds}s execution limit. "
+                f"Partial output:\n{partial}"
+            )
+            outcome["error"] = timeout_msg
+            outcome["observation"] = timeout_msg
             return outcome
 
+        # Final-answer signal
         if fa_holder:
             outcome["final_answer"] = fa_holder[0]
 
+        # Runtime exception
         if exc_holder:
             exc = exc_holder[0]
             outcome["error"] = f"{type(exc).__name__}: {exc}"
 
+        # Build the observation string the agent loop feeds to the LLM
+        parts: List[str] = []
+        if stdout:
+            parts.append(stdout)
+        if stderr:
+            parts.append(f"[stderr]\n{stderr}")
+        if outcome["error"]:
+            parts.append(outcome["error"])
+        if fa_holder:
+            parts.append(f"[final_answer submitted: {fa_holder[0][:120]}]")
+        if not parts:
+            parts.append("(sandbox executed successfully, no output)")
+
+        outcome["observation"] = "\n".join(parts)
         return outcome
