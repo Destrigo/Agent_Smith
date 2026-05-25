@@ -5,18 +5,14 @@ Covers: filesystem tools (read_file, edit_file, list_files),
 execution tools (run_command, run_tests, get_patch),
 and search tools (search_code, find_definition, find_references).
 
-The MCP decorator (@mcp.tool()) is an identity wrapper in FastMCP, so each
-tool function can be imported and called directly without a live MCP server.
-
-Tools that hardcode /testbed (search_code, find_definition, find_references,
-get_patch, run_tests) are tested with os.walk / subprocess patches that
-redirect to a temporary directory created for each test.
+All tools that operate on /testbed are exercised against a real temporary
+directory by setting the TESTBED_PATH env var (supported by _testbed.py).
+No os.walk or subprocess mocking — if something breaks, you see a real failure.
 """
 
 import os
 import subprocess
 from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -42,6 +38,27 @@ def _write(path: Path, content: str) -> Path:
     """Write *content* to *path* and return *path*."""
     path.write_text(content, encoding="utf-8")
     return path
+
+
+def _git_init(repo: Path) -> None:
+    """Initialise a git repo in *repo* with a throwaway identity."""
+    env = {**os.environ, "GIT_CONFIG_NOSYSTEM": "1", "HOME": str(repo)}
+    for cmd in [
+        ["git", "init"],
+        ["git", "config", "user.email", "test@example.com"],
+        ["git", "config", "user.name", "Test"],
+    ]:
+        subprocess.run(cmd, cwd=repo, env=env, check=True,
+                       capture_output=True)
+
+
+def _git_commit_all(repo: Path, message: str = "init") -> None:
+    """Stage every file and create a commit."""
+    env = {**os.environ, "GIT_CONFIG_NOSYSTEM": "1", "HOME": str(repo)}
+    subprocess.run(["git", "add", "."], cwd=repo, env=env, check=True,
+                   capture_output=True)
+    subprocess.run(["git", "commit", "-m", message], cwd=repo, env=env,
+                   check=True, capture_output=True)
 
 
 # ---------------------------------------------------------------------------
@@ -88,7 +105,6 @@ class TestReadFile:
     def test_line_numbers_are_prefixed(self, tmp_path):
         f = _write(tmp_path / "a.txt", "x\ny\n")
         result = read_file(str(f), start_line=1, end_line=2)
-        # Each line should start with its 1-based number followed by ": "
         lines = result.splitlines()
         assert lines[0].startswith("1: ")
         assert lines[1].startswith("2: ")
@@ -112,7 +128,7 @@ class TestEditFile:
         edit_file(str(f), old_str="abc", new_str="xyz")
         lines = f.read_text().splitlines()
         assert lines[0] == "xyz"
-        assert lines[1] == "abc"  # only first replaced
+        assert lines[1] == "abc"
         assert lines[2] == "abc"
 
     def test_string_not_found_returns_error(self, tmp_path):
@@ -192,7 +208,6 @@ class TestRunCommand:
         assert "err" in result["stderr"] or "err" in result["stdout"]
 
     def test_command_error_returns_dict(self, tmp_path):
-        # Any kind of failure should still return the three-key dict.
         result = run_command("false", workdir=str(tmp_path))
         assert "stdout" in result
         assert "stderr" in result
@@ -200,7 +215,6 @@ class TestRunCommand:
 
     def test_invalid_workdir_captured(self):
         result = run_command("echo hi", workdir="/nonexistent_path_xyz")
-        # Subprocess may raise; the tool catches and returns an error dict.
         assert "exit_code" in result
 
 
@@ -209,53 +223,87 @@ class TestRunCommand:
 # ---------------------------------------------------------------------------
 
 class TestRunTests:
+    """Tests for run_tests().
+
+    Three modes:
+      • Inline (code= + test_list=): no subprocess, pure Python exec.
+      • Env SANDBOX_TEST_CODE: runs `python -c <code>` for real.
+      • Env SANDBOX_EVAL_SCRIPT: runs `bash <script>` for real.
+    """
+
+    # -- inline mode ----------------------------------------------------------
+
+    def test_inline_mode_passing(self):
+        result = run_tests(
+            code="def add(a, b): return a + b",
+            test_list=["assert add(1, 2) == 3", "assert add(0, 0) == 0"],
+        )
+        assert result["success"] is True
+        assert result["exit_code"] == 0
+
+    def test_inline_mode_failing_assertion(self):
+        result = run_tests(
+            code="def add(a, b): return 0",          # wrong impl
+            test_list=["assert add(1, 2) == 3"],
+        )
+        assert result["success"] is False
+        assert result["exit_code"] == 1
+        assert "ASSERTION" in result["output"].upper()
+
+    def test_inline_mode_syntax_error(self):
+        result = run_tests(
+            code="def bad(: pass",                    # invalid syntax
+            test_list=["assert bad()"],
+        )
+        assert result["success"] is False
+        assert result["exit_code"] == 1
+
+    # -- SANDBOX_TEST_CODE mode (real subprocess) ----------------------------
+
     def test_sandbox_test_code_passes(self, monkeypatch, tmp_path):
         monkeypatch.setenv("SANDBOX_TEST_CODE", "assert 1 + 1 == 2")
         monkeypatch.delenv("SANDBOX_EVAL_SCRIPT", raising=False)
+        monkeypatch.setenv("TESTBED_PATH", str(tmp_path))
 
-        fake = MagicMock()
-        fake.stdout = ""
-        fake.stderr = ""
-        fake.returncode = 0
-
-        with patch("shared_tools.execution.run_tests.subprocess.run", return_value=fake) as mock_run:
-            result = run_tests()
-
-        mock_run.assert_called_once()
-        call_args = mock_run.call_args
-        assert call_args[0][0] == ["python", "-c", "assert 1 + 1 == 2"]
+        result = run_tests()
         assert result["exit_code"] == 0
 
-    def test_sandbox_test_code_failing(self, monkeypatch):
+    def test_sandbox_test_code_failing(self, monkeypatch, tmp_path):
         monkeypatch.setenv("SANDBOX_TEST_CODE", "assert False")
         monkeypatch.delenv("SANDBOX_EVAL_SCRIPT", raising=False)
+        monkeypatch.setenv("TESTBED_PATH", str(tmp_path))
 
-        fake = MagicMock()
-        fake.stdout = ""
-        fake.stderr = "AssertionError"
-        fake.returncode = 1
-
-        with patch("shared_tools.execution.run_tests.subprocess.run", return_value=fake):
-            result = run_tests()
-
+        result = run_tests()
         assert result["exit_code"] == 1
         assert "AssertionError" in result["stderr"]
 
-    def test_eval_script_env_used(self, monkeypatch):
-        monkeypatch.setenv("SANDBOX_EVAL_SCRIPT", "/testbed/eval.sh")
+    # -- SANDBOX_EVAL_SCRIPT mode (real bash script) -------------------------
+
+    def test_eval_script_passing(self, monkeypatch, tmp_path):
+        script = tmp_path / "eval.sh"
+        script.write_text("#!/bin/bash\necho PASSED\nexit 0\n")
+        script.chmod(0o755)
+        monkeypatch.setenv("SANDBOX_EVAL_SCRIPT", str(script))
         monkeypatch.delenv("SANDBOX_TEST_CODE", raising=False)
+        monkeypatch.setenv("TESTBED_PATH", str(tmp_path))
 
-        fake = MagicMock()
-        fake.stdout = "PASS"
-        fake.stderr = ""
-        fake.returncode = 0
-
-        with patch("shared_tools.execution.run_tests.subprocess.run", return_value=fake) as mock_run:
-            result = run_tests()
-
-        call_args = mock_run.call_args
-        assert call_args[0][0] == ["bash", "/testbed/eval.sh"]
+        result = run_tests()
         assert result["exit_code"] == 0
+        assert "PASSED" in result["stdout"]
+
+    def test_eval_script_failing(self, monkeypatch, tmp_path):
+        script = tmp_path / "eval.sh"
+        script.write_text("#!/bin/bash\necho FAILED\nexit 1\n")
+        script.chmod(0o755)
+        monkeypatch.setenv("SANDBOX_EVAL_SCRIPT", str(script))
+        monkeypatch.delenv("SANDBOX_TEST_CODE", raising=False)
+        monkeypatch.setenv("TESTBED_PATH", str(tmp_path))
+
+        result = run_tests()
+        assert result["exit_code"] == 1
+        assert "FAILED" in result["stdout"]
+
+    # -- error cases ----------------------------------------------------------
 
     def test_neither_env_set_returns_error(self, monkeypatch):
         monkeypatch.delenv("SANDBOX_TEST_CODE", raising=False)
@@ -279,36 +327,44 @@ class TestRunTests:
 # ---------------------------------------------------------------------------
 
 class TestGetPatch:
-    def test_returns_diff_stdout(self):
-        fake = MagicMock()
-        fake.stdout = "diff --git a/file.py b/file.py\n+new line\n"
-        fake.returncode = 0
+    """Tests for get_patch() against a real git repository.
 
-        with patch("shared_tools.execution.get_patch.subprocess.run", return_value=fake):
-            result = get_patch()
+    A temporary git repo is initialised in tmp_path; TESTBED_PATH is set so
+    the tool operates on that directory instead of /testbed.
+    """
+
+    def test_returns_diff_when_file_modified(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("TESTBED_PATH", str(tmp_path))
+        _git_init(tmp_path)
+        _write(tmp_path / "file.py", "original\n")
+        _git_commit_all(tmp_path)
+
+        _write(tmp_path / "file.py", "modified\n")
+        result = get_patch()
 
         assert "diff --git" in result
-        assert "+new line" in result
+        assert "file.py" in result
 
-    def test_returns_empty_string_when_no_changes(self):
-        fake = MagicMock()
-        fake.stdout = ""
-        fake.returncode = 0
+    def test_returns_empty_when_no_changes(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("TESTBED_PATH", str(tmp_path))
+        _git_init(tmp_path)
+        _write(tmp_path / "file.py", "stable\n")
+        _git_commit_all(tmp_path)
 
-        with patch("shared_tools.execution.get_patch.subprocess.run", return_value=fake):
-            result = get_patch()
-
+        result = get_patch()
         assert result == ""
 
-    def test_git_command_targets_testbed(self):
-        fake = MagicMock()
-        fake.stdout = ""
+    def test_respects_testbed_path(self, tmp_path, monkeypatch):
+        """TESTBED_PATH controls which repo get_patch() reads from."""
+        monkeypatch.setenv("TESTBED_PATH", str(tmp_path))
+        _git_init(tmp_path)
+        _write(tmp_path / "hello.py", "print('hello')\n")
+        _git_commit_all(tmp_path)
 
-        with patch("shared_tools.execution.get_patch.subprocess.run", return_value=fake) as mock_run:
-            get_patch()
-
-        call_kwargs = mock_run.call_args[1]
-        assert call_kwargs.get("cwd") == "/testbed"
+        _write(tmp_path / "hello.py", "print('world')\n")
+        result = get_patch()
+        # The diff must mention the file in our tmp repo, not /testbed.
+        assert "hello.py" in result
 
 
 # ---------------------------------------------------------------------------
@@ -316,57 +372,38 @@ class TestGetPatch:
 # ---------------------------------------------------------------------------
 
 class TestSearchCode:
-    def _make_testbed(self, tmp_path: Path) -> Path:
-        """Create a fake /testbed tree under tmp_path."""
-        (tmp_path / "module.py").write_text("x = 1\nresult = x + 1\n")
-        (tmp_path / "other.py").write_text("nothing_here = True\n")
-        return tmp_path
+    """search_code walks TESTBED_PATH — no os.walk mock needed."""
 
-    def test_finds_matching_lines(self, tmp_path):
-        self._make_testbed(tmp_path)
-        with patch("shared_tools.search.search_code.os.walk") as mock_walk:
-            mock_walk.return_value = [
-                (str(tmp_path), [], ["module.py", "other.py"])
-            ]
-            # Patch open to use real files
-            results = search_code("result", file_pattern="*.py")
+    def test_finds_matching_lines(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("TESTBED_PATH", str(tmp_path))
+        _write(tmp_path / "module.py", "x = 1\nresult = x + 1\n")
+        _write(tmp_path / "other.py", "nothing_here = True\n")
 
-        # Since os.walk is mocked but open is not, real file reads happen
-        # against the real tmp filesystem — but the root is now str(tmp_path).
-        # The search hits module.py which contains "result".
+        results = search_code("result", file_pattern="*.py")
         assert any("result" in r for r in results)
 
-    def test_no_results_for_missing_pattern(self, tmp_path):
-        (tmp_path / "empty.py").write_text("nothing\n")
-        with patch("shared_tools.search.search_code.os.walk") as mock_walk:
-            mock_walk.return_value = [
-                (str(tmp_path), [], ["empty.py"])
-            ]
-            results = search_code("COMPLETELY_ABSENT_XYZ123")
+    def test_no_results_for_missing_pattern(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("TESTBED_PATH", str(tmp_path))
+        _write(tmp_path / "empty.py", "nothing\n")
 
+        results = search_code("COMPLETELY_ABSENT_XYZ123")
         assert results == []
 
-    def test_file_pattern_filters_extensions(self, tmp_path):
-        (tmp_path / "code.py").write_text("target_string\n")
-        (tmp_path / "notes.txt").write_text("target_string\n")
+    def test_file_pattern_filters_extensions(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("TESTBED_PATH", str(tmp_path))
+        _write(tmp_path / "code.py", "target_string\n")
+        _write(tmp_path / "notes.txt", "target_string\n")
 
-        with patch("shared_tools.search.search_code.os.walk") as mock_walk:
-            mock_walk.return_value = [
-                (str(tmp_path), [], ["code.py", "notes.txt"])
-            ]
-            results = search_code("target_string", file_pattern="*.py")
-
-        # Only the .py file should match the pattern
+        results = search_code("target_string", file_pattern="*.py")
+        assert results  # at least one hit
         assert all(".py" in r for r in results)
 
-    def test_returns_file_and_line_number(self, tmp_path):
-        (tmp_path / "f.py").write_text("# comment\nfind_me = 1\n")
-        with patch("shared_tools.search.search_code.os.walk") as mock_walk:
-            mock_walk.return_value = [(str(tmp_path), [], ["f.py"])]
-            results = search_code("find_me")
+    def test_returns_file_and_line_number(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("TESTBED_PATH", str(tmp_path))
+        _write(tmp_path / "f.py", "# comment\nfind_me = 1\n")
 
+        results = search_code("find_me")
         assert len(results) == 1
-        # Format is "path:lineno content"
         assert ":2 " in results[0]
 
 
@@ -375,57 +412,43 @@ class TestSearchCode:
 # ---------------------------------------------------------------------------
 
 class TestFindDefinition:
-    def test_finds_function_definition(self, tmp_path):
-        (tmp_path / "funcs.py").write_text(
-            "def my_func(x):\n    return x\n\nclass MyClass:\n    pass\n"
-        )
-        with patch(
-            "shared_tools.search.find_definition.os.walk"
-        ) as mock_walk:
-            mock_walk.return_value = [(str(tmp_path), [], ["funcs.py"])]
-            results = search_function_or_class_definition_in_code("my_func")
+    """find_definition walks TESTBED_PATH — no os.walk mock needed."""
 
+    def test_finds_function_definition(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("TESTBED_PATH", str(tmp_path))
+        _write(tmp_path / "funcs.py",
+               "def my_func(x):\n    return x\n\nclass MyClass:\n    pass\n")
+
+        results = search_function_or_class_definition_in_code("my_func")
         assert any("my_func" in r for r in results)
 
-    def test_finds_class_definition(self, tmp_path):
-        (tmp_path / "cls.py").write_text("class Foo:\n    pass\n")
-        with patch(
-            "shared_tools.search.find_definition.os.walk"
-        ) as mock_walk:
-            mock_walk.return_value = [(str(tmp_path), [], ["cls.py"])]
-            results = search_function_or_class_definition_in_code("Foo")
+    def test_finds_class_definition(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("TESTBED_PATH", str(tmp_path))
+        _write(tmp_path / "cls.py", "class Foo:\n    pass\n")
 
+        results = search_function_or_class_definition_in_code("Foo")
         assert any("Foo" in r for r in results)
 
-    def test_no_match_returns_empty(self, tmp_path):
-        (tmp_path / "a.py").write_text("x = 1\n")
-        with patch(
-            "shared_tools.search.find_definition.os.walk"
-        ) as mock_walk:
-            mock_walk.return_value = [(str(tmp_path), [], ["a.py"])]
-            results = search_function_or_class_definition_in_code("ghost_fn")
+    def test_no_match_returns_empty(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("TESTBED_PATH", str(tmp_path))
+        _write(tmp_path / "a.py", "x = 1\n")
 
+        results = search_function_or_class_definition_in_code("ghost_fn")
         assert results == []
 
-    def test_does_not_match_call_site(self, tmp_path):
-        """A call like `my_func(x)` should not be returned, only defs."""
-        (tmp_path / "caller.py").write_text("my_func(1)\n")
-        with patch(
-            "shared_tools.search.find_definition.os.walk"
-        ) as mock_walk:
-            mock_walk.return_value = [(str(tmp_path), [], ["caller.py"])]
-            results = search_function_or_class_definition_in_code("my_func")
+    def test_does_not_match_call_site(self, tmp_path, monkeypatch):
+        """A call like `my_func(x)` must not be returned, only defs."""
+        monkeypatch.setenv("TESTBED_PATH", str(tmp_path))
+        _write(tmp_path / "caller.py", "my_func(1)\n")
 
+        results = search_function_or_class_definition_in_code("my_func")
         assert results == []
 
-    def test_only_searches_python_files(self, tmp_path):
-        (tmp_path / "defs.txt").write_text("def not_python():\n    pass\n")
-        with patch(
-            "shared_tools.search.find_definition.os.walk"
-        ) as mock_walk:
-            mock_walk.return_value = [(str(tmp_path), [], ["defs.txt"])]
-            results = search_function_or_class_definition_in_code("not_python")
+    def test_only_searches_python_files(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("TESTBED_PATH", str(tmp_path))
+        _write(tmp_path / "defs.txt", "def not_python():\n    pass\n")
 
+        results = search_function_or_class_definition_in_code("not_python")
         assert results == []
 
 
@@ -434,46 +457,34 @@ class TestFindDefinition:
 # ---------------------------------------------------------------------------
 
 class TestFindReferences:
-    def test_finds_variable_usage(self, tmp_path):
-        (tmp_path / "usage.py").write_text("x = my_var + 1\ny = my_var * 2\n")
-        with patch(
-            "shared_tools.search.find_references.os.walk"
-        ) as mock_walk:
-            mock_walk.return_value = [(str(tmp_path), [], ["usage.py"])]
-            results = find_references("my_var")
+    """find_references walks TESTBED_PATH — no os.walk mock needed."""
 
+    def test_finds_variable_usage(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("TESTBED_PATH", str(tmp_path))
+        _write(tmp_path / "usage.py", "x = my_var + 1\ny = my_var * 2\n")
+
+        results = find_references("my_var")
         assert len(results) == 2
 
-    def test_word_boundary_no_partial_match(self, tmp_path):
-        (tmp_path / "b.py").write_text("my_variable = 1\nmy_var_extended = 2\n")
-        with patch(
-            "shared_tools.search.find_references.os.walk"
-        ) as mock_walk:
-            mock_walk.return_value = [(str(tmp_path), [], ["b.py"])]
-            results = find_references("my_variable")
+    def test_word_boundary_no_partial_match(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("TESTBED_PATH", str(tmp_path))
+        _write(tmp_path / "b.py", "my_variable = 1\nmy_var_extended = 2\n")
 
-        # Only the exact-word-boundary match should appear
+        results = find_references("my_variable")
         assert len(results) == 1
         assert "my_variable" in results[0]
 
-    def test_no_references_returns_empty(self, tmp_path):
-        (tmp_path / "c.py").write_text("x = 1\n")
-        with patch(
-            "shared_tools.search.find_references.os.walk"
-        ) as mock_walk:
-            mock_walk.return_value = [(str(tmp_path), [], ["c.py"])]
-            results = find_references("nonexistent_symbol_xyz")
+    def test_no_references_returns_empty(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("TESTBED_PATH", str(tmp_path))
+        _write(tmp_path / "c.py", "x = 1\n")
 
+        results = find_references("nonexistent_symbol_xyz")
         assert results == []
 
-    def test_result_format_includes_path_and_line(self, tmp_path):
-        (tmp_path / "ref.py").write_text("token = 1\n")
-        with patch(
-            "shared_tools.search.find_references.os.walk"
-        ) as mock_walk:
-            mock_walk.return_value = [(str(tmp_path), [], ["ref.py"])]
-            results = find_references("token")
+    def test_result_format_includes_path_and_line(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("TESTBED_PATH", str(tmp_path))
+        _write(tmp_path / "ref.py", "token = 1\n")
 
+        results = find_references("token")
         assert len(results) == 1
-        # Format: "path:lineno content"
         assert ":1 " in results[0]

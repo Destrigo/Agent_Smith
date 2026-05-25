@@ -1,11 +1,6 @@
 import subprocess
 from mcp_server import mcp_server as mcp
 from shared_tools._testbed import _resolve
-# ALLOWED_DIRS = ["/testbed", "/tmp/agent"]
-
-# def _is_allowed_dir(path: str) -> bool:
-#     path = path.rstrip("/")
-#     return any(path == d or path.startswith(d + "/") for d in ALLOWED_DIRS)
 
 
 @mcp.tool()
@@ -14,13 +9,6 @@ def run_command(command: str, workdir: str):
     Execute a shell command inside a restricted working directory.
     Returns stdout, stderr, and exit code.
     """
-
-    # if not _is_allowed_dir(workdir):
-    #     return {
-    #         "stdout": "",
-    #         "stderr": f"ERROR: workdir not allowed: {workdir}",
-    #         "exit_code": -1,
-    #     }
 
     try:
         result = subprocess.run(
