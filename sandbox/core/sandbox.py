@@ -297,7 +297,13 @@ class Sandbox:
         # the global sys.stdout entirely.
 
         def _sandbox_print(*args, sep=" ", end="\n", file=None, flush=False):
-            target = file if file is not None else stdout_buf
+            import sys as _sys
+            if file is None or file is _sys.stdout:
+                target = stdout_buf
+            elif file is _sys.stderr:
+                target = stderr_buf
+            else:
+                target = file
             text = sep.join(str(a) for a in args) + end
             target.write(text)
 

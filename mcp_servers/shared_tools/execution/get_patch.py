@@ -15,4 +15,4 @@ def get_patch() -> str:
     )
     if result.returncode != 0:
         return f"(no changes or git error: {result.stderr.strip()})"
-    return result.stdout or "(no changes)"
+    return result.stdout

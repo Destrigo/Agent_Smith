@@ -22,3 +22,18 @@ results/20260525_170031/
     │   ├── solution_seed11.json
     │   └── ...
     └── ...
+
+
+# 1. Avvia prima solo SWE-bench con 5 modelli veloci (3 task = minimo)
+./run_benchmark.sh --benchmark swebench --n-tasks 3 \
+  --models "qwen/qwen3-8b:free,google/gemini-2.5-flash-preview-05-20:free,\
+meta-llama/llama-4-scout:free,mistralai/devstral-small:free,qwen/qwen3-32b:free"
+
+# 2. Copia il report nella root
+cp results/*/BENCHMARK_REPORT.md BENCHMARK_REPORT.md
+
+# 3. Scrivi manualmente ablation + conclusions in BENCHMARK_REPORT.md
+
+# 4. Committa tutto (report + solution.json)
+git add results/ BENCHMARK_REPORT.md
+git commit -m "feat: add benchmark results"
