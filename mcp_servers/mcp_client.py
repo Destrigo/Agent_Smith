@@ -37,10 +37,14 @@ class MCPClient:
     
     # Async connect internals
     async def _connect_stdio(self, command: str, args: list) -> None:
+        import os
         from mcp import ClientSession, StdioServerParameters
         from mcp.client.stdio import stdio_client
 
-        params = StdioServerParameters(command=command, args=args)
+        # Pass current environment so the subprocess inherits vars like
+        # TESTBED_PATH, SANDBOX_TEST_CODE, OPENROUTER_API_KEY, etc.
+        params = StdioServerParameters(command=command, args=args,
+                                       env=os.environ.copy())
         self._transport_ctx = stdio_client(params)
         read_stream, write_stream = await self._transport_ctx.__aenter__()
 
@@ -111,15 +115,13 @@ class MCPClient:
         result = await self._session.call_tool(tool_name, arguments=arguments)
         if not result.content:
             return None
-        if len(result.content) == 1:
-            item = result.content[0]
-            text = getattr(item, "text", None)
-            if text is not None:
-                try:
-                    return json.loads(text)
-                except (json.JSONDecodeError, TypeError):
-                    return text
-        return [getattr(c, "text", str(c)) for c in result.content]
+        # Return raw text — callers decide whether to parse as JSON.
+        # Auto-parsing here would cause double-decode for tools that
+        # deliberately return a JSON string (e.g. run_tests).
+        # Multiple content items are joined with newlines so the result is
+        # always a string, enabling substring checks like "foo" in result.
+        texts = [getattr(c, "text", str(c)) for c in result.content]
+        return texts[0] if len(texts) == 1 else "\n".join(texts)
 
     # Cleanup
     def close(self) -> None:

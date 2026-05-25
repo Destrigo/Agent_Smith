@@ -1,5 +1,6 @@
 import subprocess
 from mcp_server import mcp_server as mcp
+from shared_tools._testbed import _resolve
 # ALLOWED_DIRS = ["/testbed", "/tmp/agent"]
 
 # def _is_allowed_dir(path: str) -> bool:
@@ -25,7 +26,7 @@ def run_command(command: str, workdir: str):
         result = subprocess.run(
             command,
             shell=True,
-            cwd=workdir,
+            cwd=_resolve(workdir),
             capture_output=True,
             text=True,
             timeout=30,

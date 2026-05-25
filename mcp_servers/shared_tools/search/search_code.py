@@ -1,12 +1,13 @@
 import os
 import fnmatch
 from mcp_server import mcp_server as mcp
+from shared_tools._testbed import testbed
 
 @mcp.tool()
 def search_code(pattern: str, file_pattern: str = "*"):
     results = []
 
-    for root, _, files in os.walk("/testbed"):
+    for root, _, files in os.walk(testbed()):
         for file in files:
 
             if not fnmatch.fnmatch(file, file_pattern):

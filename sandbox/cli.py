@@ -15,14 +15,29 @@ from models.sandbox_model import SandboxConfig
 from sandbox.core.sandbox import Sandbox
 
 
-def _read_multiline(prompt: str) -> str:
-    """Read code from stdin until a blank line is entered."""
+def _read_multiline(prompt: str) -> str | None:
+    """Read code from stdin until a blank line is entered.
+
+    In non-interactive (pipe) mode the entire stdin is consumed at once so
+    that multi-line scripts with blank lines work correctly.
+
+    Returns None when stdin is exhausted (EOF with no input collected),
+    so callers can detect pipe-closed / non-interactive termination.
+    """
+    # Pipe / redirect mode: read everything at once
+    if not sys.stdin.isatty():
+        code = sys.stdin.read()
+        return code if code.strip() else None
+
+    # Interactive REPL mode: read until blank line or EOF
     print(prompt)
     lines = []
     while True:
         try:
             line = input("... " if lines else ">>> ")
         except EOFError:
+            if not lines:
+                return None
             break
         if line == "" and lines:
             break
@@ -97,6 +112,10 @@ def main() -> None:
         except KeyboardInterrupt:
             print()
             continue
+
+        if code is None:
+            # stdin exhausted (pipe closed) — exit cleanly
+            break
 
         if not code.strip():
             continue

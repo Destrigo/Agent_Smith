@@ -1,15 +1,17 @@
 import os
 import fnmatch
 from mcp_server import mcp_server as mcp
+from shared_tools._testbed import _resolve
 
 @mcp.tool()
-def list_files(directory: str, pattern: str) -> list[str]:
+def list_files(directory: str, pattern: str = "*") -> list[str]:
     """
     List files in a directory matching a glob pattern.
     """
+    directory = _resolve(directory)
     if not os.path.exists(directory):
         return []
-    
+
     results = []
 
     for root, _, files in os.walk(directory):

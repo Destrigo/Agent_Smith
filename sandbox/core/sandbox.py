@@ -3,7 +3,6 @@ import builtins as _builtins
 import io
 import os
 import threading
-from contextlib import redirect_stderr, redirect_stdout
 from typing import Any, Dict, List, Optional
 
 try:
@@ -15,11 +14,18 @@ except ImportError:
 from models.sandbox_model import SandboxConfig
 
 
-class FinalAnswerSignal(BaseException):
-    """Raised inside the sandbox when final_answer() is called."""
+class FinalAnswerSignal(Exception):
+    """Raised inside the sandbox when final_answer() is called.
+
+    Inherits from Exception (not BaseException) so exam test code that wraps
+    the call in `except Exception` can catch it and continue execution.
+    In normal agent use final_answer() is never wrapped in a try/except,
+    so this does not affect the agent loop's behaviour.
+    """
 
     def __init__(self, answer: str):
         self.answer = answer
+        super().__init__(f"final_answer called: {answer[:80]}")
 
 
 # Modules that must never be importable regardless of the allowlist.
@@ -82,6 +88,18 @@ def _truncate(text: str, limit: int) -> tuple[str, bool]:
     if len(encoded) <= limit:
         return text, False
     return encoded[:limit].decode("utf-8", errors="replace"), True
+
+
+def _current_vas_bytes() -> int:
+    """Return the process's current virtual address space in bytes (Linux only)."""
+    try:
+        with open("/proc/self/status") as f:
+            for line in f:
+                if line.startswith("VmSize:"):
+                    return int(line.split()[1]) * 1024
+    except Exception:
+        pass
+    return 0
 
 
 class Sandbox:
@@ -266,6 +284,25 @@ class Sandbox:
         stdout_buf = io.StringIO()
         stderr_buf = io.StringIO()
 
+        # Inject a custom print() into the sandbox namespace that writes to
+        # our StringIO buffers instead of the real sys.stdout/sys.stderr.
+        #
+        # We deliberately avoid redirect_stdout/redirect_stderr context
+        # managers here.  In Python 3.14, thread.start() blocks until the
+        # new thread reaches a "running" state.  When the thread's first
+        # action is setattr(sys, 'stdout', buf) (inside redirect_stdout),
+        # there is a race: the thread can redirect sys.stdout before the
+        # main thread's next print() executes, silently swallowing all CLI
+        # output.  Injecting print() into the exec namespace avoids touching
+        # the global sys.stdout entirely.
+
+        def _sandbox_print(*args, sep=" ", end="\n", file=None, flush=False):
+            target = file if file is not None else stdout_buf
+            text = sep.join(str(a) for a in args) + end
+            target.write(text)
+
+        self._namespace["print"] = _sandbox_print
+
         outcome: Dict[str, Any] = {
             "success": False,
             "stdout": "",
@@ -279,28 +316,8 @@ class Sandbox:
         fa_holder: List[str] = []
 
         def _run() -> None:
-            # Best-effort memory enforcement via RLIMIT_AS (virtual address
-            # space). This is process-wide on Linux, which is acceptable for
-            # single-task exam runs. We restore the original limit afterward.
-            _orig_as = None
-            if _HAS_RESOURCE and self.config.max_memory_mb > 0:
-                try:
-                    _max = self.config.max_memory_mb * 1024 * 1024
-                    _orig_as = _resource.getrlimit(_resource.RLIMIT_AS)
-                    _cur_soft = _orig_as[0]
-                    _unlimited = _resource.RLIM_INFINITY
-                    # Only lower the limit, never raise it above what's set.
-                    if _cur_soft == _unlimited or _cur_soft > _max:
-                        _resource.setrlimit(
-                            _resource.RLIMIT_AS,
-                            (_max, _orig_as[1]),
-                        )
-                except Exception:
-                    _orig_as = None
-
             try:
-                with redirect_stdout(stdout_buf), redirect_stderr(stderr_buf):
-                    exec(code, self._namespace)  # noqa: S102
+                exec(code, self._namespace)  # noqa: S102
                 outcome["success"] = True
             except FinalAnswerSignal as fa:
                 outcome["success"] = True
@@ -317,17 +334,46 @@ class Sandbox:
                 raise
             except Exception as exc:
                 exc_holder.append(exc)
-            finally:
-                # Restore original memory limits.
-                if _HAS_RESOURCE and _orig_as is not None:
-                    try:
-                        _resource.setrlimit(_resource.RLIMIT_AS, _orig_as)
-                    except Exception:
-                        pass
 
         thread = threading.Thread(target=_run, daemon=True)
         thread.start()
+
+        # --- Memory limit: set AFTER thread.start() so the thread stack is
+        # already allocated with the full virtual-address space available.
+        # RLIMIT_AS is process-wide; we restore it from the main thread after
+        # join() so even a timed-out (still-alive) thread doesn't leave the
+        # reduced limit in place for subsequent sandbox calls.
+        #
+        # The limit is set to  current_VAS + max_memory_mb  so that the
+        # sandbox code has exactly max_memory_mb of additional virtual space.
+        # Setting an absolute cap of max_memory_mb would be below Python's
+        # own VAS baseline (~240 MB) and would prevent the main thread from
+        # resuming after the join() timeout.
+        _orig_as = None
+        if _HAS_RESOURCE and self.config.max_memory_mb > 0:
+            try:
+                _extra = self.config.max_memory_mb * 1024 * 1024
+                _current_vas = _current_vas_bytes()
+                _max = (_current_vas or 512 * 1024 * 1024) + _extra
+                _orig_as = _resource.getrlimit(_resource.RLIMIT_AS)
+                _cur_soft = _orig_as[0]
+                _unlimited = _resource.RLIM_INFINITY
+                if _cur_soft == _unlimited or _cur_soft > _max:
+                    _resource.setrlimit(
+                        _resource.RLIMIT_AS,
+                        (_max, _orig_as[1]),
+                    )
+            except Exception:
+                _orig_as = None
+
         thread.join(timeout=self.config.max_execution_time_seconds)
+
+        # Always restore — even if join timed out.
+        if _HAS_RESOURCE and _orig_as is not None:
+            try:
+                _resource.setrlimit(_resource.RLIMIT_AS, _orig_as)
+            except Exception:
+                pass
 
         # Collect and truncate output
         raw_stdout = stdout_buf.getvalue()

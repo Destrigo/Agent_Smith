@@ -1,6 +1,7 @@
 import os
 import re
 from mcp_server import mcp_server as mcp
+from shared_tools._testbed import testbed
 
 @mcp.tool()
 def find_references(name: str, filepath: str = "", line: int = 0):
@@ -9,7 +10,7 @@ def find_references(name: str, filepath: str = "", line: int = 0):
     # word boundary to avoid partial matches
     pattern = re.compile(rf"\b{name}\b")
 
-    for root, _, files in os.walk("/testbed"):
+    for root, _, files in os.walk(testbed()):
         for file in files:
             if not file.endswith(".py"):
                 continue

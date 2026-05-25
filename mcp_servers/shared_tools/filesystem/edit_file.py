@@ -1,4 +1,5 @@
 from mcp_server import mcp_server as mcp
+from shared_tools._testbed import _resolve
 
 
 @mcp.tool()
@@ -7,6 +8,7 @@ def edit_file(filepath: str, old_str: str, new_str: str) -> str:
     Replace the first occurrence of old_str with new_str in the given file.
     Returns a confirmation message or an error if old_str was not found.
     """
+    filepath = _resolve(filepath)
     with open(filepath, "r", encoding="utf-8") as f:
         content = f.read()
 

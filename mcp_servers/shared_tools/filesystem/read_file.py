@@ -1,12 +1,14 @@
 from mcp_server import mcp_server as mcp
+from shared_tools._testbed import _resolve
 
 
 @mcp.tool()
-def read_file(filepath: str, start_line: int, end_line: int) -> str:
+def read_file(filepath: str, start_line: int = 1, end_line: int = 9999) -> str:
     """
     Read lines [start_line, end_line] (1-indexed, inclusive) from a file.
     Returns the lines prefixed with their line numbers.
     """
+    filepath = _resolve(filepath)
     try:
         with open(filepath, encoding="utf-8", errors="replace") as f:
             lines = f.readlines()
