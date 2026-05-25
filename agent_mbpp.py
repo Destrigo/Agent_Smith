@@ -37,8 +37,8 @@ def _build_system_prompt(sandbox) -> str:
             manual = sandbox.get_manual()
         except Exception:
             pass
-    prompt_path = PROJECT_ROOT / "agent" / "prompt" / "mbpp_prompt.txt"
-    static_prompt = prompt_path.read_text(encode="utf-8")
+    prompt_path = PROJECT_ROOT / "agent" / "prompts" / "mbpp_prompt.txt"
+    static_prompt = prompt_path.read_text(encoding="utf-8")
     if manual:
         return static_prompt + "\n\n" + manual
     return static_prompt
@@ -93,13 +93,19 @@ def make_sandbox_client(task: MBPPTaskInput):
     os.environ["SANDBOX_TEST_CODE"] = "\n".join(test_lines)
     try:
         from sandbox.core.sandbox import Sandbox
-        from sandbox.config import SandboxConfig
+        from models.sandbox_model import SandboxConfig
+        from mcp_servers.mcp_client import MCPClient
         config = SandboxConfig()
-        mcp_cmd = f"python {PROJECT_ROOT}/mcp_servers/mcp_tools_mbpp.py"
-        return Sandbox(config, mcp_stdio=mcp_cmd,
-                       task_context=task.model_dump())
-    except ImportError:
-        logging.warning("Sandbox module not found - using StubSanboxClient")
+        sandbox = Sandbox(config)
+        mcp_script = str(PROJECT_ROOT / "mcp_tools_mbpp.py")
+        mcp_client = MCPClient()
+        mcp_client.connect_stdio("python", [mcp_script])
+        sandbox.register_mcp_tools(mcp_client.make_tool_wrappers())
+        sandbox._mcp_client = mcp_client  # keep subprocess alive
+        return sandbox
+    except Exception as exc:
+        logging.warning(
+            "Sandbox/MCP setup failed (%s) - using StubSandboxClient", exc)
         return _StubSandboxClient(task)
 
 

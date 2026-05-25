@@ -174,17 +174,24 @@ def _make_sandbox_client(container_id: str, task: SWEBenchTaskInput,
     that bridge into the Docker container.
     """
     os.environ["SANDBOX_EVAL_SCRIPT"] = eval_script_path
+    os.environ["DOCKER_CONTAINER_ID"] = container_id
     try:
         from sandbox.core.sandbox import Sandbox
-        from sandbox.config import SandboxConfig
+        from models.sandbox_model import SandboxConfig
+        from mcp_servers.mcp_client import MCPClient
         config = SandboxConfig(
             allowed_directories=["/testbed", "/tmp/agent"],
             max_execution_time_seconds=120, max_memory_mb=1024)
-        mcp_cmd = (f"python {PROJECT_ROOT}/mcp_servers/mcp_tools_swebench.py "
-                   f"--container-id {container_id}")
-        return Sandbox(config, mcp_stdio=mcp_cmd)
-    except ImportError:
-        logging.warning("Sandbox module not found - using DockerStubClient")
+        sandbox = Sandbox(config)
+        mcp_script = str(PROJECT_ROOT / "mcp_tools_swebench.py")
+        mcp_client = MCPClient()
+        mcp_client.connect_stdio("python", [mcp_script])
+        sandbox.register_mcp_tools(mcp_client.make_tool_wrappers())
+        sandbox._mcp_client = mcp_client  # keep subprocess alive
+        return sandbox
+    except Exception as exc:
+        logging.warning(
+            "Sandbox/MCP setup failed (%s) - using DockerStubClient", exc)
         return _DockerStubClient(docker_mgr, task)
 
 
