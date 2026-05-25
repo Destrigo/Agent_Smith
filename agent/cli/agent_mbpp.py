@@ -137,13 +137,11 @@ def main() -> None:
     logger.info("Loaded MBPP task #%s: %s", task.task_id,
                 task.task_definition[:60])
 
-    prompt_path = PROJECT_ROOT / "agent" / "prompts" / "mbpp_prompt.txt"
-    system_prompt = prompt_path.read_text(encoding="utf-8")
-
     llm = LLMManager.from_env(provider=args.provider, model=args.model_name,
                               provider_url=args.provider_url)
 
     sandbox = make_sandbox_client(task)
+    system_prompt = _build_system_prompt(sandbox)
 
     loop = AgentLoop(
         llm_manager=llm, sandbox_client=sandbox, system_prompt=system_prompt,
