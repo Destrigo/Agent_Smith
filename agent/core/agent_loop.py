@@ -15,7 +15,8 @@ class AgentLoop:
     def __init__(self, llm_manager: LLMManager, sandbox_client,
                  system_prompt: str, max_iterations: int = 10,
                  max_input_tokens: int = 6000,
-                 max_output_tokens: int = 1500) -> None:
+                 max_output_tokens: int = 1500,
+                 max_time_seconds: int = 120) -> None:
         self.llm = llm_manager
         self.sandbox = sandbox_client
         self.system_prompt = system_prompt
@@ -23,6 +24,7 @@ class AgentLoop:
         self.max_iterations = max_iterations
         self.max_input_tokens = max_input_tokens
         self.max_output_tokens = max_output_tokens
+        self.max_time_seconds = max_time_seconds
 
     def _call_llm(self, state: AgentState
                   ) -> tuple[Optional[LLMResponse], int]:
@@ -56,7 +58,8 @@ class AgentLoop:
         state = AgentState(task_id=task_id, benchmark=benchmark,
                            max_iterations=self.max_iterations,
                            max_input_tokens=self.max_input_tokens,
-                           max_output_tokens=self.max_output_tokens)
+                           max_output_tokens=self.max_output_tokens,
+                           max_time_seconds=self.max_time_seconds)
         state.start_time = time.time()
         state.messages.append(Message(role="system",
                                       content=self.system_prompt))

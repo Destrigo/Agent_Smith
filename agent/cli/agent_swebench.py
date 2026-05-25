@@ -112,7 +112,9 @@ def main() -> None:
         loop = AgentLoop(
             llm_manager=llm, sandbox_client=sandbox,
             system_prompt=system_prompt, max_iterations=args.max_iterations,
-            max_input_tokens=300000, max_output_tokens=10000)
+            max_input_tokens=args.max_input_tokens,
+            max_output_tokens=args.max_output_tokens,
+            max_time_seconds=args.timeout)
         result = loop.run(task_id=task.instance_id, benchmark="swebench",
                           user_message=build_task_message(task))
     except Exception as exc:

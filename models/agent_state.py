@@ -38,4 +38,11 @@ class AgentState(BaseModel):
         if self.total_output_tokens >= self.max_output_tokens:
             return (False, f"max_output_tokens={self.max_output_tokens} "
                     "exceeded")
+        if self.start_time is not None:
+            import time
+            elapsed = time.time() - self.start_time
+            if elapsed >= self.max_time_seconds:
+                return (False,
+                        f"max_time_seconds={self.max_time_seconds} exceeded "
+                        f"(elapsed={elapsed:.1f}s)")
         return True, ""
