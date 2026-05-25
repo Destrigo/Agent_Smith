@@ -227,34 +227,163 @@ class TestMCPSandboxScripts:
 
 
 # ---------------------------------------------------------------------------
-# Skipped scripts — need Docker / full env / infinite loop
+# Group 3 — Layer-1 bonus (no MCP needed)
 # ---------------------------------------------------------------------------
 
-@pytest.mark.skip(
-    reason="Layer-1 bonus: bare-except loop that only stops with SIGKILL — "
-           "will hang pytest indefinitely"
-)
-def test_layer1_bonus():
-    ...
+class TestLayer1Bonus:
+    def test_layer1_bonus(self):
+        """Sandbox reports TIMEOUT even when bare-except swallows exceptions.
+
+        Our sandbox uses in-process threading (layer 0): the daemon thread is
+        abandoned after timeout rather than SIGKILL'd.  The test verifies that
+        the sandbox correctly detects thread.is_alive() and reports TIMEOUT —
+        the documented behaviour for layer-0 implementations.
+        """
+        sb = _make_sandbox(timeout=5)
+        r = sb.execute(_script("test_layer1_bonus.py"))
+        assert "TIMEOUT" in r["observation"], (
+            "Expected sandbox to report TIMEOUT for the bare-except loop\n"
+            f"observation: {r['observation']}"
+        )
 
 
-@pytest.mark.skip(
-    reason="Needs mcp_tools_mbpp.py subprocess + SANDBOX_TEST_CODE env var"
-)
-def test_mbpp_tools():
-    ...
+# ---------------------------------------------------------------------------
+# Group 4 — MBPP real tools (mcp_tools_mbpp.py)
+# ---------------------------------------------------------------------------
+
+PROJECT_ROOT = Path(__file__).parent.parent
 
 
-@pytest.mark.skip(
-    reason="Needs Docker, mcp_tools_swebench.py, and a /testbed directory"
-)
-def test_swebench_tools():
-    ...
+@pytest.fixture(scope="module")
+def mbpp_mcp_client():
+    """MCPClient connected to mcp_tools_mbpp.py via stdio."""
+    from mcp_servers.mcp_client import MCPClient
+    client = MCPClient()
+    client.connect_stdio("python", [str(PROJECT_ROOT / "mcp_tools_mbpp.py")])
+    yield client
+    try:
+        client.close()
+    except Exception:
+        pass
 
 
-@pytest.mark.skip(
-    reason="Needs an HTTP MCP server running on a separate port — "
-           "MCP transport already covered by test_mcp_stdio"
-)
-def test_mcp_http():
-    ...
+@pytest.fixture
+def mbpp_sandbox(mbpp_mcp_client):
+    """Fresh sandbox with all MBPP MCP tools injected."""
+    sb = _make_sandbox()
+    sb.register_mcp_tools(mbpp_mcp_client.make_tool_wrappers())
+    return sb
+
+
+class TestMBPPTools:
+    def test_mbpp_tools(self, mbpp_sandbox):
+        """run_tests inline mode and final_answer are callable."""
+        r = mbpp_sandbox.execute(_script("test_mbpp_tools.py"))
+        assert "=== MBPP TOOLS OK ===" in r["stdout"], r["observation"]
+
+
+# ---------------------------------------------------------------------------
+# Group 5 — SWE-bench real tools (mcp_tools_swebench.py + local testbed)
+# ---------------------------------------------------------------------------
+
+TESTBED_DIR = str(SCRIPTS_DIR / "testbed")
+
+
+@pytest.fixture(scope="module")
+def swebench_mcp_client(tmp_path_factory):
+    """MCPClient connected to mcp_tools_swebench.py with TESTBED_PATH set."""
+    import os
+    from mcp_servers.mcp_client import MCPClient
+    # Use a writable copy of testbed so edit_file tests don't mutate the repo
+    import shutil
+    tb = str(tmp_path_factory.mktemp("testbed"))
+    shutil.copytree(TESTBED_DIR, tb, dirs_exist_ok=True)
+    os.environ["TESTBED_PATH"] = tb
+    client = MCPClient()
+    client.connect_stdio(
+        "python", [str(PROJECT_ROOT / "mcp_tools_swebench.py")]
+    )
+    yield client
+    try:
+        client.close()
+    except Exception:
+        pass
+    finally:
+        os.environ.pop("TESTBED_PATH", None)
+
+
+@pytest.fixture
+def swebench_sandbox(swebench_mcp_client):
+    """Fresh sandbox with all SWE-bench MCP tools injected."""
+    sb = _make_sandbox()
+    sb.register_mcp_tools(swebench_mcp_client.make_tool_wrappers())
+    return sb
+
+
+class TestSWEBenchTools:
+    def test_swebench_tools(self, swebench_sandbox):
+        """All 9 mandatory SWE-bench tools are available and callable."""
+        r = swebench_sandbox.execute(_script("test_swebench_tools.py"))
+        assert "=== SWEBENCH TOOLS OK ===" in r["stdout"], r["observation"]
+
+
+# ---------------------------------------------------------------------------
+# Group 6 — MCP HTTP transport
+# ---------------------------------------------------------------------------
+
+def _find_free_port() -> int:
+    import socket
+    with socket.socket() as s:
+        s.bind(("", 0))
+        return s.getsockname()[1]
+
+
+@pytest.fixture(scope="module")
+def http_mcp_server():
+    """simple_mcp_server.py running on a free port via streamable-HTTP."""
+    import socket
+    import subprocess
+    import time
+    port = _find_free_port()
+    proc = subprocess.Popen(
+        ["python", str(SCRIPTS_DIR / "simple_mcp_server.py"),
+         "--http", "--port", str(port)],
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+    )
+    # wait up to 5 s for the port to open
+    for _ in range(25):
+        try:
+            with socket.create_connection(("localhost", port), timeout=0.3):
+                break
+        except OSError:
+            time.sleep(0.2)
+    yield f"http://localhost:{port}/mcp"
+    proc.terminate()
+    proc.wait()
+
+
+@pytest.fixture(scope="module")
+def http_mcp_client(http_mcp_server):
+    """MCPClient connected via streamable-HTTP."""
+    from mcp_servers.mcp_client import MCPClient
+    client = MCPClient()
+    client.connect_http(http_mcp_server)
+    yield client
+    try:
+        client.close()
+    except Exception:
+        pass
+
+
+@pytest.fixture
+def http_mcp_sandbox(http_mcp_client):
+    """Fresh sandbox with add/multiply/echo from the HTTP server."""
+    sb = _make_sandbox()
+    sb.register_mcp_tools(http_mcp_client.make_tool_wrappers())
+    return sb
+
+
+class TestMCPHTTP:
+    def test_mcp_http(self, http_mcp_sandbox):
+        r = http_mcp_sandbox.execute(_script("test_mcp_http.py"))
+        assert "=== MCP HTTP CONFIG OK ===" in r["stdout"], r["observation"]
