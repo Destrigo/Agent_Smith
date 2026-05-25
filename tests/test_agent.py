@@ -450,6 +450,5 @@ class TestProviders:
         assert "<end_code>" in captured["payload"]["stop"]
 
     def test_all_providers_in_registry(self):
-        expected = {"openrouter", "groq", "gemini", "mistral", "cohere",
-                    "together", "fireworks"}
+        expected = {"openrouter", "groq", "gemini", "mistral", "together"}
         assert expected.issubset(set(PROVIDER_REGISTRY.keys()))

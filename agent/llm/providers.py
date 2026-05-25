@@ -65,36 +65,15 @@ def _openrouter(request: LLMRequest) -> LLMResponse:
         request, headers={"HTTP-Referer": "https://github.com/agent-smith"})
 
 
-def _groq(request: LLMRequest) -> LLMResponse:
-    return openai_compatible_call(request)
-
-
-def _gemini(request: LLMRequest) -> LLMResponse:
-    return openai_compatible_call(request)
-
-
-def _mistral(request: LLMRequest) -> LLMResponse:
-    return openai_compatible_call(request)
-
-
-def _cohere(request: LLMRequest) -> LLMResponse:
-    return openai_compatible_call(request)
-
-
-def _together(request: LLMRequest) -> LLMResponse:
-    return openai_compatible_call(request)
-
-
-def _fireworks(request: LLMRequest) -> LLMResponse:
+# All other providers use the plain OpenAI-compatible endpoint.
+def _generic(request: LLMRequest) -> LLMResponse:
     return openai_compatible_call(request)
 
 
 PROVIDER_REGISTRY: dict[str, Callable[[LLMRequest], LLMResponse]] = {
     "openrouter": _openrouter,
-    "groq": _groq,
-    "gemini": _gemini,
-    "mistral": _mistral,
-    "cohere": _cohere,
-    "together": _together,
-    "fireworks": _fireworks,
+    "groq": _generic,
+    "gemini": _generic,
+    "mistral": _generic,
+    "together": _generic,
 }

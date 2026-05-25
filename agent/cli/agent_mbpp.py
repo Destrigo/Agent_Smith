@@ -2,11 +2,8 @@ import argparse
 import logging
 import sys
 from pathlib import Path
-import io
 import os
-import contextlib
 from dotenv import load_dotenv
-from models.sandbox import SandboxResult
 from models.task import MBPPTaskInput
 from agent.llm.manager import LLMManager
 from agent.core.agent_loop import AgentLoop
@@ -44,69 +41,20 @@ def _build_system_prompt(sandbox) -> str:
     return static_prompt
 
 
-class _StubSandboxClient:
-    """
-    Development stub that runs code locally (no security restrictions).
-    Replace with Agent A's real sandbox before final integration.
-    """
-    def __init__(self, task: MBPPTaskInput) -> None:
-        self._task = task
-
-    def execute(self, code: str):
-        def run_tests(solution_code: str) -> str:
-            try:
-                namespace: dict = {}
-                exec(solution_code, namespace)
-                for test_import in self._task.test_imports:
-                    exec(test_import, namespace)
-                for test in self._task.test_list:
-                    exec(test, namespace)
-                return "ALL TESTS PASSED"
-            except AssertionError as e:
-                return f"ASSERTION FAILED: {e}"
-            except Exception as e:
-                return f"ERROR: {type(e).__name__}: {e}"
-
-        _final_answers: list = []
-
-        def final_answer(sol):
-            _final_answers.append(sol)
-
-        namespace = {"run_tests": run_tests, "final_answer": final_answer}
-        stdout_buf = io.StringIO()
-        try:
-            with contextlib.redirect_stdout(stdout_buf):
-                exec(code, namespace)
-            return SandboxResult(
-                success=True, stdout=stdout_buf.getvalue(), stderr="",
-                error=None, execution_time_ms=0.0, memory_usage_mb=0.0,
-                final_answer=_final_answers[0] if _final_answers else None)
-        except Exception as exc:
-            return SandboxResult(
-                success=False, stdout=stdout_buf.getvalue(), stderr="",
-                error=f"{type(exc).__name__}: {exc}", execution_time_ms=0.0,
-                memory_usage_mb=0.0)
-
-
 def make_sandbox_client(task: MBPPTaskInput):
     test_lines = list(task.test_imports) + list(task.test_list)
     os.environ["SANDBOX_TEST_CODE"] = "\n".join(test_lines)
-    try:
-        from sandbox.core.sandbox import Sandbox
-        from models.sandbox_model import SandboxConfig
-        from mcp_servers.mcp_client import MCPClient
-        config = SandboxConfig()
-        sandbox = Sandbox(config)
-        mcp_script = str(PROJECT_ROOT / "mcp_tools_mbpp.py")
-        mcp_client = MCPClient()
-        mcp_client.connect_stdio("python", [mcp_script])
-        sandbox.register_mcp_tools(mcp_client.make_tool_wrappers())
-        sandbox._mcp_client = mcp_client  # keep subprocess alive
-        return sandbox
-    except Exception as exc:
-        logging.warning(
-            "Sandbox/MCP setup failed (%s) - using StubSandboxClient", exc)
-        return _StubSandboxClient(task)
+    from sandbox.core.sandbox import Sandbox
+    from models.sandbox_model import SandboxConfig
+    from mcp_servers.mcp_client import MCPClient
+    config = SandboxConfig()
+    sandbox = Sandbox(config)
+    mcp_script = str(PROJECT_ROOT / "mcp_tools_mbpp.py")
+    mcp_client = MCPClient()
+    mcp_client.connect_stdio("python", [mcp_script])
+    sandbox.register_mcp_tools(mcp_client.make_tool_wrappers())
+    sandbox._mcp_client = mcp_client  # keep subprocess alive
+    return sandbox
 
 
 def main() -> None:

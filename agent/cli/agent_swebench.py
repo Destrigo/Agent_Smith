@@ -2,15 +2,11 @@ import argparse
 import logging
 import signal
 import sys
-import io
 import os
-import tarfile
-import contextlib
 from pathlib import Path
 from dotenv import load_dotenv
 from models.task import SWEBenchTaskInput
 from models.solution import SolutionOutput
-from models.sandbox import SandboxResult
 from agent.llm.manager import LLMManager
 from agent.core.agent_loop import AgentLoop
 from mydocker.manager import DockerManager
@@ -51,148 +47,24 @@ def _build_system_prompt(sandbox) -> str:
     return static_prompt
 
 
-class _DockerStubClient:
-    """
-    Development stub: runs MCP tool calls directly in the Docker container.
-    Replace with Agent A's real sandbox before submission.
-    """
-    def __init__(self, docker_mgr: DockerManager, task: SWEBenchTaskInput
-                 ) -> None:
-        self._mgr = docker_mgr
-        self._task = task
-
-    def execute(self, code: str) -> SandboxResult:
-        mgr = self._mgr
-        answers: list[str] = []
-
-        def run_in_container(cmd: str, workdir: str = "/testbed") -> str:
-            return mgr.exec_run(cmd, workdir)
-
-        def read_file(filepath: str, start_line: int = None,
-                      end_line: int = None) -> str:
-            if start_line is not None and end_line is not None:
-                cmd = (f"sed -n '{start_line},{end_line}p' "
-                       f"{filepath} | nl -ba -nrz -v{start_line}")
-            else:
-                cmd = f"cat -n {filepath}"
-            return run_in_container(cmd)
-
-        def edit_file(filepath: str, old_str: str, new_str: str) -> str:
-            result = mgr._container.exec_run(["cat", filepath])
-            content = result.output.decode("utf-8", errors="replace") \
-                if result.output else ""
-            if old_str not in content:
-                return (f"ERROR: old_str not found in {filepath}."
-                        f"Check exact whitespace/content")
-            new_content = content.replace(old_str, new_str, 1)
-            tar_stream = io.BytesIO()
-            parent_dir = os.path.dirname(filepath) or "/"
-            filename = os.path.basename(filepath)
-            file_data = new_content.encode("utf-8")
-            with tarfile.open(fileobj=tar_stream, mode="w") as tar:
-                tar_info = tarfile.TarInfo(name=filename)
-                tar_info.size = len(file_data)
-                tar.addfile(tar_info, io.BytesIO(file_data))
-            tar_stream.seek(0)
-            success = mgr._container.put_archive(parent_dir, tar_stream)
-            if not success:
-                return f"Error: failed to write updated file to {filepath}."
-            return "File edited successfully."
-
-        def list_files(directory: str, pattern: str = "*") -> str:
-            return run_in_container(f"find '{directory}' -name '{pattern}' "
-                                    "-type f 2>/dev/null | sort | head -100")
-
-        def search_code(pattern: str, file_pattern: str = "*.py") -> str:
-            flag = "-rEn" if any(c in pattern for c in r".*+?[](){}^$|\\") \
-                  else "-rFn"
-            return run_in_container(
-                f"grep {flag} --include='{file_pattern}' "
-                f"'{pattern}' /testbed 2>/dev/null | head -50")
-
-        def search_function_or_class_definition_in_code(name: str) -> str:
-            result = run_in_container(
-                f"grep -rEn --include='*.py' "
-                f"'(^|\\s)(async\\s+)?def\\s+{name}\\s*\\(|^class\\s+{name}"
-                "[\\s:(]' /testbed 2>/dev/null | head -20")
-            if not result.strip():
-                result = run_in_container(
-                    f"grep -rn --include='*.py' '{name}' /testbed 2>/dev/null "
-                    "| head -20")
-                if result.strip():
-                    result = f"[No definition found. Broad matches:]\n{result}"
-            return result
-
-        def find_references(name: str, filepath: str = "", line: int = 0
-                            ) -> str:
-            scope = f"'{filepath}'" if filepath else "/testbed"
-            return run_in_container(
-                f"grep -rEn --include='*.py' '\\b{name}\\b' {scope} "
-                "2>/dev/null | head -30")
-
-        def run_tests() -> str:
-            return run_in_container("bash /tmp/eval_script.sh 2>&1 | tail -50")
-
-        def run_command(command: str, workdir: str = "/testbed") -> str:
-            return run_in_container(command, workdir)
-
-        def get_patch() -> str:
-            return run_in_container("git -c core.fileMode=false diff HEAD",
-                                    workdir="/testbed")
-
-        def final_answer(patch: str):
-            answers.append(patch)
-
-        namespace = {
-            "read_file": read_file, "edit_file": edit_file,
-            "list_files": list_files, "search_code": search_code,
-            "search_function_or_class_definition_in_code":
-            search_function_or_class_definition_in_code,
-            "find_references": find_references, "run_tests": run_tests,
-            "run_command": run_command, "get_patch": get_patch,
-            "final_answer": final_answer}
-
-        stdout_buf = io.StringIO()
-        try:
-            with contextlib.redirect_stdout(stdout_buf):
-                exec(code, namespace)
-            return SandboxResult(
-                success=True, stdout=stdout_buf.getvalue(), stderr="",
-                error=None, execution_time_ms=0.0, memory_usage_mb=0.0,
-                final_answer=answers[0] if answers else None)
-        except Exception as exc:
-            return SandboxResult(
-                success=False, stdout=stdout_buf.getvalue(), stderr="",
-                error=f"{type(exc).__name__}: {exc}", execution_time_ms=0.0,
-                memory_usage_mb=0.0)
-
-
 def _make_sandbox_client(container_id: str, task: SWEBenchTaskInput,
                          docker_mgr: DockerManager, eval_script_path: str):
-    """
-    Connect to Agent A's sandbox, configured with SWE-bench MCP tools
-    that bridge into the Docker container.
-    """
+    """Connect the real sandbox with SWE-bench MCP tools bridging into Docker."""
     os.environ["SANDBOX_EVAL_SCRIPT"] = eval_script_path
     os.environ["DOCKER_CONTAINER_ID"] = container_id
-    try:
-        from sandbox.core.sandbox import Sandbox
-        from models.sandbox_model import SandboxConfig
-        from mcp_servers.mcp_client import MCPClient
-        config = SandboxConfig(
-            allowed_directories=["/testbed", "/tmp/agent"],
-            max_execution_time_seconds=120, max_memory_mb=1024)
-        sandbox = Sandbox(config)
-        mcp_script = str(PROJECT_ROOT / "mcp_tools_swebench.py")
-        mcp_client = MCPClient()
-        mcp_client.connect_stdio("python", [mcp_script])
-        sandbox.register_mcp_tools(mcp_client.make_tool_wrappers())
-        sandbox._mcp_client = mcp_client  # keep subprocess alive
-        return sandbox
-    except Exception as exc:
-        logging.warning(
-            "Sandbox/MCP setup failed (%s) - using DockerStubClient", exc)
-        return _DockerStubClient(docker_mgr, task)
+    from sandbox.core.sandbox import Sandbox
+    from models.sandbox_model import SandboxConfig
+    from mcp_servers.mcp_client import MCPClient
+    config = SandboxConfig(
+        allowed_directories=["/testbed", "/tmp/agent"],
+        max_execution_time_seconds=120, max_memory_mb=1024)
+    sandbox = Sandbox(config)
+    mcp_script = str(PROJECT_ROOT / "mcp_tools_swebench.py")
+    mcp_client = MCPClient()
+    mcp_client.connect_stdio("python", [mcp_script])
+    sandbox.register_mcp_tools(mcp_client.make_tool_wrappers())
+    sandbox._mcp_client = mcp_client  # keep subprocess alive
+    return sandbox
 
 
 def main() -> None:
