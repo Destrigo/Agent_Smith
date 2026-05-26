@@ -1,5 +1,8 @@
 .PHONY: install sandbox sandbox-mbpp sandbox-swebench \
-        mbpp swebench test lint clean help
+        mbpp swebench \
+        test test-eval test-moulinette test-all \
+        setup-docker fix-docker-userns \
+        lint clean help
 
 # ── defaults ──────────────────────────────────────────────────────────────────
 MODEL    ?= qwen/qwen3-235b-a22b:free
@@ -51,8 +54,44 @@ validate:
 	cd moulinette && uv run python -m moulinette validate --solution $(OUT)
 
 # ── test / lint ───────────────────────────────────────────────────────────────
+
+# Main project tests (includes eval_documents sandbox scripts)
 test:
 	uv run pytest tests/ -v
+
+# eval_documents sandbox scripts only
+test-eval:
+	uv run pytest tests/test_sandbox_scripts.py -v
+
+# Moulinette tests (uses moulinette's own venv)
+test-moulinette:
+	cd moulinette && uv run pytest tests/ -v
+
+# Both suites in sequence
+test-all: test test-moulinette
+
+# Pull Docker images required by moulinette tests
+# (python:3.11-slim for MBPP; SWE-bench images are fetched on demand)
+setup-docker:
+	docker pull python:3.11-slim
+
+# Fix rootless-Docker lchown issue for SWE-bench tests.
+#
+# Root cause: swebench's copy_to_container() creates a tar that embeds the
+# host user's UID/GID.  The Docker rootless daemon then tries to lchown the
+# extracted file to that UID, which is outside the sub-UID mapping range
+# (see /etc/subuid) → EINVAL / 500 Server Error.
+#
+# Fix: extend the sub-UID/GID map to include the user's own UID/GID, then
+# restart the rootless daemon so the new mapping is active.
+# Requires sudo — run once per machine.
+fix-docker-userns:
+	@USER=$$(id -un); UID_=$$(id -u); GID_=$$(id -g); \
+	echo "Patching /etc/subuid and /etc/subgid for $$USER ($$UID_:$$GID_)..."; \
+	sudo sh -c "grep -qF '$$USER:$$UID_:1' /etc/subuid || echo '$$USER:$$UID_:1' >> /etc/subuid"; \
+	sudo sh -c "grep -qF '$$USER:$$GID_:1' /etc/subgid || echo '$$USER:$$GID_:1' >> /etc/subgid"; \
+	systemctl --user restart docker; \
+	echo "Done. SWE-bench eval tests should now pass."
 
 lint:
 	uv run python -m py_compile $$(find . -name "*.py" \
@@ -87,7 +126,16 @@ help:
 	@echo "  swebench         run SWE-bench agent"
 	@echo "  validate         validate solution with moulinette"
 	@echo ""
-	@echo "  test             run pytest"
+	@echo "  test             run main project tests (incl. eval_documents)"
+	@echo "  test-eval        run eval_documents sandbox tests only"
+	@echo "  test-moulinette  run moulinette tests (uses moulinette venv)"
+	@echo "  test-all         run both test suites in sequence"
+	@echo ""
+	@echo "  setup-docker     pull Docker images needed by moulinette tests"
+	@echo "                   (run once per machine: docker pull python:3.11-slim)"
+	@echo "  fix-docker-userns fix rootless-Docker lchown error for SWE-bench tests"
+	@echo "                   (requires sudo, run once per machine)"
+	@echo ""
 	@echo "  lint             syntax-check all .py files"
 	@echo "  mcp-mbpp         start MBPP MCP server on port 8000"
 	@echo "  mcp-swebench     start SWE-bench MCP server on port 8001"
