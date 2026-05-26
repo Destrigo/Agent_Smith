@@ -37,8 +37,10 @@ import shared_tools.execution.run_tests      # noqa: F401, E402
 import shared_tools.filesystem.edit_file     # noqa: F401, E402
 import shared_tools.filesystem.list_files    # noqa: F401, E402
 import shared_tools.filesystem.read_file     # noqa: F401, E402
+import shared_tools.filesystem.write_file    # noqa: F401, E402
 import shared_tools.search.find_definition   # noqa: F401, E402
 import shared_tools.search.find_references   # noqa: F401, E402
+import shared_tools.search.grep_context      # noqa: F401, E402
 import shared_tools.search.search_code       # noqa: F401, E402
 
 from mcp_server import mcp_server  # noqa: E402
