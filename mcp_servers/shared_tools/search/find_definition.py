@@ -1,10 +1,22 @@
 import os
 import re
+
 from mcp_server import mcp_server as mcp
 from shared_tools._testbed import testbed
+from shared_tools._docker import is_docker_mode, docker_exec
+
 
 @mcp.tool()
 def search_function_or_class_definition_in_code(name: str):
+    if is_docker_mode():
+        cmd = (
+            f"grep -rn --include='*.py' -E "
+            f"'^[[:space:]]*(def|class)[[:space:]]+{re.escape(name)}\\b' /testbed 2>/dev/null || true"
+        )
+        result = docker_exec(cmd, workdir="/testbed")
+        lines = result["stdout"].strip().splitlines()
+        return [l for l in lines if l]
+
     results = []
 
     pattern = re.compile(rf"^\s*(def|class)\s+{re.escape(name)}\b")

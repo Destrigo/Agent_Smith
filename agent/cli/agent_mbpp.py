@@ -63,11 +63,16 @@ def main() -> None:
                         help="Path to task JSON file")
     parser.add_argument("--output", required=True,
                         help="Path to write solution JSON")
-    parser.add_argument("--model-name", required=True,
-                        help="Model identifiler, eg. qwen/qwen3-b:free")
-    parser.add_argument("--provider-url", required=True, help="API base URL")
-    parser.add_argument("--provider", default="openrouter",
-                        help="Provider name for key lookup")
+    parser.add_argument("--model-name",
+                        default=os.getenv("AGENT_MODEL", "mistral-small-latest"),
+                        help="Model identifier (or set AGENT_MODEL in .env)")
+    parser.add_argument("--provider-url",
+                        default=os.getenv("AGENT_PROVIDER_URL",
+                                          "https://api.mistral.ai/v1"),
+                        help="API base URL (or set AGENT_PROVIDER_URL in .env)")
+    parser.add_argument("--provider",
+                        default=os.getenv("AGENT_PROVIDER", "mistral"),
+                        help="Provider name for key lookup (or set AGENT_PROVIDER in .env)")
     parser.add_argument("--max-iterations", type=int, default=10)
     parser.add_argument("--max-input-tokens", type=int, default=6000)
     parser.add_argument("--max-output-tokens", type=int, default=1500)

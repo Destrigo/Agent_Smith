@@ -1,10 +1,16 @@
 import os
 import fnmatch
+
 from mcp_server import mcp_server as mcp
 from shared_tools._testbed import testbed
+from shared_tools._docker import is_docker_mode, docker_search_code
+
 
 @mcp.tool()
 def search_code(pattern: str, file_pattern: str = "*"):
+    if is_docker_mode():
+        return docker_search_code(pattern, "/testbed", file_pattern)
+
     results = []
 
     for root, _, files in os.walk(testbed()):

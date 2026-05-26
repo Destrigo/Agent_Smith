@@ -1,10 +1,22 @@
 import os
 import re
+
 from mcp_server import mcp_server as mcp
 from shared_tools._testbed import testbed
+from shared_tools._docker import is_docker_mode, docker_exec
+
 
 @mcp.tool()
 def find_references(name: str, filepath: str = "", line: int = 0):
+    if is_docker_mode():
+        cmd = (
+            f"grep -rn --include='*.py' -E "
+            f"'\\b{re.escape(name)}\\b' /testbed 2>/dev/null || true"
+        )
+        result = docker_exec(cmd, workdir="/testbed")
+        lines = result["stdout"].strip().splitlines()
+        return [l for l in lines if l]
+
     results = []
 
     # word boundary to avoid partial matches

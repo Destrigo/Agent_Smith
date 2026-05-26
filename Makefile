@@ -1,13 +1,18 @@
+# Suppress uv's "VIRTUAL_ENV does not match project environment" warning
+unexport VIRTUAL_ENV
+
 .PHONY: install sandbox sandbox-mbpp sandbox-swebench \
-        mbpp swebench \
+        mbpp swebench run-mbpp run-swebench \
+        exam-mbpp exam-swebench exam-sandbox \
+        bench-mbpp \
         test test-eval test-moulinette test-all \
         setup-docker fix-docker-userns \
         lint clean help
 
 # ── defaults ──────────────────────────────────────────────────────────────────
-MODEL    ?= qwen/qwen3-235b-a22b:free
-URL      ?= https://openrouter.ai/api/v1
-PROVIDER ?= openrouter
+MODEL    ?= mistral-small-latest
+URL      ?= https://api.mistral.ai/v1
+PROVIDER ?= mistral
 TASK     ?= /tmp/task.json
 OUT      ?= /tmp/solution.json
 
@@ -49,9 +54,63 @@ swebench:
 		--provider-url "$(URL)" \
 		--provider $(PROVIDER)
 
+# ── exam scripts (as used by the evaluator) ──────────────────────────────────
+exam-mbpp:
+	./eval_documents/exam_mbpp.sh \
+		--student-path . \
+		--moulinette-path ./moulinette \
+		--env-file .env
+
+exam-swebench:
+	./eval_documents/exam_swebench.sh \
+		--student-path . \
+		--moulinette-path ./moulinette \
+		--env-file .env
+
+exam-sandbox:
+	./eval_documents/exam_sandbox.sh \
+		--student-path . \
+		--moulinette-path ./moulinette \
+		--env-file .env
+
+# ── full benchmark sweep ─────────────────────────────────────────────────────
+# N=0 → all 257 tasks   N=20 → first 20   N=20 SHUFFLE=1 → 20 random
+bench-mbpp:
+	./scripts/bench_mbpp.sh $(if $(N),--n $(N),) $(if $(SHUFFLE),--shuffle,)
+
+# ── one-shot: dump → run → validate ──────────────────────────────────────────
+# Usage: make run-mbpp
+#        make run-mbpp MODEL=deepseek/deepseek-r1:free
+#        make run-swebench
+run-mbpp:
+	@[ -f .env ] || { echo "Copying .env.example → .env"; cp .env.example .env; }
+	cd moulinette && uv run python -m moulinette dump --benchmark mbpp --output $(TASK)
+	uv run agent-mbpp \
+		--task-file $(TASK) \
+		--output $(OUT) \
+		--model-name "$(MODEL)" \
+		--provider-url "$(URL)" \
+		--provider $(PROVIDER)
+	cd moulinette && uv run python -m moulinette validate mbpp $(TASK) $(OUT)
+
+run-swebench:
+	@[ -f .env ] || { echo "Copying .env.example → .env"; cp .env.example .env; }
+	cd moulinette && uv run python -m moulinette dump --benchmark swebench --output $(TASK)
+	uv run agent-swebench \
+		--task-file $(TASK) \
+		--output $(OUT) \
+		--model-name "$(MODEL)" \
+		--provider-url "$(URL)" \
+		--provider $(PROVIDER)
+	cd moulinette && uv run python -m moulinette validate swebench $(TASK) $(OUT)
+
 # ── validate ──────────────────────────────────────────────────────────────────
-validate:
-	cd moulinette && uv run python -m moulinette validate --solution $(OUT)
+# Usage: make validate-mbpp / make validate-swebench
+validate-mbpp:
+	cd moulinette && uv run python -m moulinette validate mbpp $(TASK) $(OUT)
+
+validate-swebench:
+	cd moulinette && uv run python -m moulinette validate swebench $(TASK) $(OUT)
 
 # ── test / lint ───────────────────────────────────────────────────────────────
 
@@ -119,6 +178,9 @@ help:
 	@echo "  sandbox          interactive sandbox REPL"
 	@echo "  sandbox-mbpp     sandbox with MBPP MCP tools"
 	@echo "  sandbox-swebench sandbox with SWE-bench MCP tools"
+	@echo ""
+	@echo "  run-mbpp         one-shot: dump → run MBPP agent → validate"
+	@echo "  run-swebench     one-shot: dump → run SWE-bench agent → validate"
 	@echo ""
 	@echo "  dump-mbpp        dump an MBPP task  → TASK=$(TASK)"
 	@echo "  dump-swebench    dump a SWE-bench task"

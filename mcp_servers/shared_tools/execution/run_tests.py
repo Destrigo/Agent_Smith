@@ -3,6 +3,7 @@ import subprocess
 from typing import List, Optional
 
 from mcp_server import mcp_server as mcp
+from shared_tools._docker import is_docker_mode, docker_exec
 
 
 @mcp.tool()
@@ -47,9 +48,26 @@ def run_tests(
     eval_script = os.environ.get("SANDBOX_EVAL_SCRIPT")
 
     if test_code:
+        # Prepend the agent's solution code (if provided) before the
+        # test assertions so the tests can actually call the function.
+        full_code = (code + "\n" + test_code) if code else test_code
+
+        if is_docker_mode():
+            result = docker_exec(
+                f"python -c {_shell_quote(full_code)}",
+                workdir="/testbed",
+            )
+            return {
+                "success": result["exit_code"] == 0,
+                "output": result["stdout"] + result["stderr"],
+                "stdout": result["stdout"],
+                "stderr": result["stderr"],
+                "exit_code": result["exit_code"],
+            }
+
         result = subprocess.run(
-            ["python", "-c", test_code],
-            cwd=os.environ.get("TESTBED_PATH", "/testbed"),
+            ["python", "-c", full_code],
+            cwd=os.environ.get("TESTBED_PATH") or None,
             capture_output=True,
             text=True,
             timeout=60,
@@ -62,9 +80,22 @@ def run_tests(
                 "exit_code": result.returncode}
 
     elif eval_script:
+        if is_docker_mode():
+            result = docker_exec(
+                f"bash {eval_script}",
+                workdir="/testbed",
+            )
+            return {
+                "success": result["exit_code"] == 0,
+                "output": result["stdout"] + result["stderr"],
+                "stdout": result["stdout"],
+                "stderr": result["stderr"],
+                "exit_code": result["exit_code"],
+            }
+
         result = subprocess.run(
             ["bash", eval_script],
-            cwd=os.environ.get("TESTBED_PATH", "/testbed"),
+            cwd=os.environ.get("TESTBED_PATH") or None,
             capture_output=True,
             text=True,
             timeout=120,
@@ -80,3 +111,8 @@ def run_tests(
                "is set, and no code/test_list arguments were provided.")
         return {"success": False, "output": msg,
                 "stdout": "", "stderr": msg, "exit_code": -1}
+
+
+def _shell_quote(s: str) -> str:
+    """Single-quote a string for safe use in a shell command."""
+    return "'" + s.replace("'", "'\\''") + "'"

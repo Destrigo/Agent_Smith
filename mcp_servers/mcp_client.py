@@ -90,13 +90,29 @@ class MCPClient:
         """
         wrappers: Dict[str, Callable] = {}
         for name, schema in self._tools.items():
-            def _make(tool_name: str, doc: str) -> Callable:
-                def wrapper(**kwargs: Any) -> Any:
+            def _make(tool_name: str, doc: str,
+                      input_schema: dict) -> Callable:
+                # Build ordered list of parameter names from the JSON schema
+                # so positional calls like run_tests(code) work correctly.
+                props = input_schema.get("properties", {})
+                required = input_schema.get("required", [])
+                param_names = list(required) + [
+                    k for k in props if k not in required
+                ]
+
+                def wrapper(*args: Any, **kwargs: Any) -> Any:
+                    for i, arg in enumerate(args):
+                        if i < len(param_names):
+                            kwargs[param_names[i]] = arg
                     return self.call_tool(tool_name, **kwargs)
                 wrapper.__name__ = tool_name
                 wrapper.__doc__ = doc
                 return wrapper
-            wrappers[name] = _make(name, schema.get("description", ""))
+            wrappers[name] = _make(
+                name,
+                schema.get("description", ""),
+                schema.get("inputSchema", {}),
+            )
         return wrappers
 
     # Tool invocation (sync)
