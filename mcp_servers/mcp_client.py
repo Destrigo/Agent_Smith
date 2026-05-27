@@ -11,6 +11,7 @@ plain Python callables that can be injected into the sandbox namespace.
 
 import asyncio
 import json
+import threading
 from typing import Any, Callable, Dict, Optional
 
 
@@ -18,23 +19,33 @@ class MCPClient:
 
     def __init__(self) -> None:
         self._tools: Dict[str, dict] = {}
-        self._loop: asyncio.AbstractEventLoop = asyncio.new_event_loop()
         self._session = None
         # Keep context-manager objects alive for the session lifetime.
         self._transport_ctx = None
         self._session_ctx = None
 
+        # Run a persistent event loop in a daemon thread so that anyio
+        # cancel scopes (used by the streamable-HTTP transport) stay alive
+        # between calls.  run_until_complete() would stop the loop after each
+        # call, causing anyio to cancel its background reader task.
+        self._loop: asyncio.AbstractEventLoop = asyncio.new_event_loop()
+        self._thread = threading.Thread(target=self._loop.run_forever, daemon=True)
+        self._thread.start()
+
+    def _run_sync(self, coro, timeout: float = 30) -> Any:
+        """Schedule *coro* in the background event loop and wait for the result."""
+        future = asyncio.run_coroutine_threadsafe(coro, self._loop)
+        return future.result(timeout=timeout)
+
     # Public connect API (sync wrappers)
     def connect_stdio(self, command: str, args: list = None) -> None:
         """Launch *command* as a subprocess and connect via stdio transport."""
-        self._loop.run_until_complete(
-            self._connect_stdio(command, args or [])
-        )
+        self._run_sync(self._connect_stdio(command, args or []))
 
     def connect_http(self, url: str) -> None:
         """Connect to an MCP server via streamable-HTTP at *url*."""
-        self._loop.run_until_complete(self._connect_http(url))
-    
+        self._run_sync(self._connect_http(url))
+
     # Async connect internals
     async def _connect_stdio(self, command: str, args: list) -> None:
         import os
@@ -56,9 +67,9 @@ class MCPClient:
 
     async def _connect_http(self, url: str) -> None:
         from mcp import ClientSession
-        from mcp.client.streamable_http import streamablehttp_client
+        from mcp.client.streamable_http import streamable_http_client
 
-        self._transport_ctx = streamablehttp_client(url)
+        self._transport_ctx = streamable_http_client(url)
         read_stream, write_stream, _ = await self._transport_ctx.__aenter__()
 
         self._session_ctx = ClientSession(read_stream, write_stream)
@@ -107,9 +118,7 @@ class MCPClient:
                 f"Unknown MCP tool: '{tool_name}'. "
                 f"Available: {list(self._tools)}"
             )
-        return self._loop.run_until_complete(
-            self._call_tool_async(tool_name, kwargs)
-        )
+        return self._run_sync(self._call_tool_async(tool_name, kwargs))
 
     async def _call_tool_async(self, tool_name: str, arguments: dict) -> Any:
         result = await self._session.call_tool(tool_name, arguments=arguments)
@@ -132,6 +141,13 @@ class MCPClient:
                 await self._transport_ctx.__aexit__(None, None, None)
 
         try:
-            self._loop.run_until_complete(_close())
+            self._run_sync(_close(), timeout=10)
+        except Exception:
+            pass
         finally:
-            self._loop.close()
+            self._loop.call_soon_threadsafe(self._loop.stop)
+            self._thread.join(timeout=5)
+            try:
+                self._loop.close()
+            except Exception:
+                pass
