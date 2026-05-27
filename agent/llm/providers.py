@@ -33,8 +33,17 @@ def _post(url: str, payload: dict[str, Any], api_key: str,
 
 def _parse_response(data: dict, elapsed_ms: float, api_url: str
                     ) -> LLMResponse:
-    choice = data.get("choices", [{}])[0].get("message", {}).get(
+    raw_content = data.get("choices", [{}])[0].get("message", {}).get(
         "content", "")
+    # Some providers (Mistral, Anthropic-compat) return content as a list of
+    # content blocks: [{"type": "text", "text": "..."}]. Flatten to a string.
+    if isinstance(raw_content, list):
+        choice = "".join(
+            block.get("text", "") for block in raw_content
+            if isinstance(block, dict) and block.get("type") == "text"
+        )
+    else:
+        choice = raw_content or ""
     usage = data.get("usage", {})
     return LLMResponse(
         content=choice, input_tokens=usage.get("prompt_tokens", 0),
