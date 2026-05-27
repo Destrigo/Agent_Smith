@@ -66,7 +66,7 @@ def main() -> None:
     parser.add_argument("--model-name", required=True,
                         help="Model identifiler, eg. qwen/qwen3-b:free")
     parser.add_argument("--provider-url", required=True, help="API base URL")
-    parser.add_argument("--provider", default="openrouter",
+    parser.add_argument("--provider", default="mistral",
                         help="Provider name for key lookup")
     parser.add_argument("--max-iterations", type=int, default=10)
     parser.add_argument("--max-input-tokens", type=int, default=6000)

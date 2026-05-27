@@ -3,9 +3,9 @@
         exam-sandbox exam-mbpp exam-swe exam
 
 # ── defaults ──────────────────────────────────────────────────────────────────
-MODEL    ?= qwen/qwen3-235b-a22b:free
-URL      ?= https://openrouter.ai/api/v1
-PROVIDER ?= openrouter
+MODEL    ?= mistral-small-latest
+URL      ?= https://api.mistral.ai/v1
+PROVIDER ?= mistral
 TASK     ?= /tmp/task.json
 OUT      ?= /tmp/solution.json
 

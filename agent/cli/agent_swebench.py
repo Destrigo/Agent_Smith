@@ -73,7 +73,7 @@ def main() -> None:
     parser.add_argument("--output", required=True)
     parser.add_argument("--model-name", required=True)
     parser.add_argument("--provider-url", required=True)
-    parser.add_argument("--provider", default="openrouter")
+    parser.add_argument("--provider", default="mistral")
     parser.add_argument("--max-iterations", type=int, default=30)
     parser.add_argument("--max-input-tokens", type=int, default=300000)
     parser.add_argument("--max-output-tokens", type=int, default=10000)

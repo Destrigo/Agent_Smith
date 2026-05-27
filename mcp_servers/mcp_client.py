@@ -101,13 +101,19 @@ class MCPClient:
         """
         wrappers: Dict[str, Callable] = {}
         for name, schema in self._tools.items():
-            def _make(tool_name: str, doc: str) -> Callable:
-                def wrapper(**kwargs: Any) -> Any:
+            def _make(tool_name: str, doc: str, param_names: list) -> Callable:
+                def wrapper(*args: Any, **kwargs: Any) -> Any:
+                    # Map positional args to parameter names from the MCP schema
+                    for i, val in enumerate(args):
+                        if i < len(param_names):
+                            kwargs.setdefault(param_names[i], val)
                     return self.call_tool(tool_name, **kwargs)
                 wrapper.__name__ = tool_name
                 wrapper.__doc__ = doc
                 return wrapper
-            wrappers[name] = _make(name, schema.get("description", ""))
+            props = schema.get("inputSchema", {}).get("properties", {})
+            wrappers[name] = _make(name, schema.get("description", ""),
+                                   list(props.keys()))
         return wrappers
 
     # Tool invocation (sync)
