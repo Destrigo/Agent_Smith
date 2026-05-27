@@ -8,9 +8,10 @@ from agent.llm.providers import (PROVIDER_REGISTRY, RateLimitError,
 
 logger = logging.getLogger(__name__)
 
-# how long to wait between retries (seconds): 1s, 2s, 4s, 8s
-_BACKOFF = [1, 2, 4, 8]
-MAX_RETRIES = 4
+# how long to wait between retries (seconds): escalate to 60s to survive
+# Mistral's free-tier per-minute rate-limit window.
+_BACKOFF = [1, 2, 4, 8, 60]
+MAX_RETRIES = 5
 
 
 class LLMManager:

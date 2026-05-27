@@ -346,26 +346,31 @@ class Sandbox:
             except Exception as exc:
                 exc_holder.append(exc)
 
-        thread = threading.Thread(target=_run, daemon=True)
-        thread.start()
-
-        # --- Memory limit: set AFTER thread.start() so the thread stack is
-        # already allocated with the full virtual-address space available.
+        # --- Memory limit: set BEFORE thread.start() to close the race window.
+        #
+        # Setting it after thread.start() creates a race: the daemon thread can
+        # call mmap/malloc (e.g. bytearray(512 MB)) and return before the main
+        # thread reaches setrlimit, letting the allocation succeed even though it
+        # exceeds the configured limit.
+        #
         # RLIMIT_AS is process-wide; we restore it from the main thread after
         # join() so even a timed-out (still-alive) thread doesn't leave the
         # reduced limit in place for subsequent sandbox calls.
         #
-        # The limit is set to  current_VAS + max_memory_mb  so that the
-        # sandbox code has exactly max_memory_mb of additional virtual space.
-        # Setting an absolute cap of max_memory_mb would be below Python's
-        # own VAS baseline (~240 MB) and would prevent the main thread from
-        # resuming after the join() timeout.
+        # The limit is:  current_VAS  +  thread-stack headroom (16 MB)
+        #                             +  max_memory_mb
+        # so the sandbox code has exactly max_memory_mb of additional virtual
+        # space while still leaving room for the thread stack that is mmap'd
+        # during thread.start().  Setting an absolute cap of max_memory_mb
+        # would be below Python's own VAS baseline and would crash the process.
+        _THREAD_STACK_HEADROOM = 16 * 1024 * 1024  # 16 MB
         _orig_as = None
         if _HAS_RESOURCE and self.config.max_memory_mb > 0:
             try:
                 _extra = self.config.max_memory_mb * 1024 * 1024
                 _current_vas = _current_vas_bytes()
-                _max = (_current_vas or 512 * 1024 * 1024) + _extra
+                _base = _current_vas or 512 * 1024 * 1024
+                _max = _base + _THREAD_STACK_HEADROOM + _extra
                 _orig_as = _resource.getrlimit(_resource.RLIMIT_AS)
                 _cur_soft = _orig_as[0]
                 _unlimited = _resource.RLIM_INFINITY
@@ -376,6 +381,9 @@ class Sandbox:
                     )
             except Exception:
                 _orig_as = None
+
+        thread = threading.Thread(target=_run, daemon=True)
+        thread.start()
 
         thread.join(timeout=self.config.max_execution_time_seconds)
 

@@ -71,9 +71,13 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="SWE-bench Agent")
     parser.add_argument("--task-file", required=True)
     parser.add_argument("--output", required=True)
-    parser.add_argument("--model-name", required=True)
-    parser.add_argument("--provider-url", required=True)
-    parser.add_argument("--provider", default="mistral")
+    parser.add_argument("--model-name",
+                        default=os.getenv("AGENT_MODEL", "mistral-small-latest"))
+    parser.add_argument("--provider-url",
+                        default=os.getenv("AGENT_PROVIDER_URL",
+                                          "https://api.mistral.ai/v1"))
+    parser.add_argument("--provider",
+                        default=os.getenv("AGENT_PROVIDER", "mistral"))
     parser.add_argument("--max-iterations", type=int, default=30)
     parser.add_argument("--max-input-tokens", type=int, default=300000)
     parser.add_argument("--max-output-tokens", type=int, default=10000)
@@ -124,8 +128,6 @@ def main() -> None:
             solution="", iterations=0, total_requests=0, total_input_tokens=0,
             total_output_tokens=0, total_time_seconds=0.0, error=str(exc))
     finally:
-        if "sandbox" in dir() and hasattr(sandbox, "_mcp_client"):
-            sandbox._mcp_client.close()
         logger.info("Stopping and removing Docker container...")
         docker_mgr.cleanup()
 

@@ -1,14 +1,18 @@
 import subprocess
 from mcp_server import mcp_server as mcp
 from shared_tools._testbed import _resolve
+from shared_tools._docker import is_docker_mode, docker_exec
 
 
 @mcp.tool()
-def run_command(command: str, workdir: str):
+def run_command(command: str, workdir: str = "/testbed"):
     """
-    Execute a shell command inside a restricted working directory.
+    Execute a shell command inside the testbed working directory.
+    In SWE-bench mode the command runs inside the Docker container.
     Returns stdout, stderr, and exit code.
     """
+    if is_docker_mode():
+        return docker_exec(command, workdir=workdir)
 
     try:
         result = subprocess.run(
@@ -19,13 +23,11 @@ def run_command(command: str, workdir: str):
             text=True,
             timeout=30,
         )
-
         return {
             "stdout": result.stdout,
             "stderr": result.stderr,
             "exit_code": result.returncode,
         }
-
     except Exception as e:
         return {
             "stdout": "",
