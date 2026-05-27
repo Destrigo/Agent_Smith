@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class MBPPTaskInput(BaseModel):
@@ -8,6 +8,11 @@ class MBPPTaskInput(BaseModel):
     function_definition: str
     test_imports: list[str] = Field(default_factory=list)
     test_list: list[str] = Field(default_factory=list)
+
+    @field_validator("task_id", mode="before")
+    @classmethod
+    def coerce_task_id(cls, v: object) -> str:
+        return str(v)
 
 
 class SWEBenchTaskInput(BaseModel):

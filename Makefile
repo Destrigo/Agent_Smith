@@ -1,5 +1,6 @@
 .PHONY: install sandbox sandbox-mbpp sandbox-swebench \
-        mbpp swebench test lint clean help
+        mbpp swebench test lint clean help \
+        exam-sandbox exam-mbpp exam-swe exam
 
 # ── defaults ──────────────────────────────────────────────────────────────────
 MODEL    ?= qwen/qwen3-235b-a22b:free
@@ -66,6 +67,31 @@ mcp-mbpp:
 mcp-swebench:
 	python mcp_tools_swebench.py --transport http --port 8001
 
+# ── exam ──────────────────────────────────────────────────────────────────────
+exam-sandbox:
+	bash eval_documents/exam_sandbox.sh \
+		--student-path $(CURDIR) \
+		--moulinette-path $(CURDIR)/moulinette \
+		--env-file $(CURDIR)/.env
+
+exam-mbpp:
+	bash eval_documents/exam_mbpp.sh \
+		--student-path $(CURDIR) \
+		--moulinette-path $(CURDIR)/moulinette \
+		--env-file $(CURDIR)/.env \
+		--model-name "$(MODEL)" \
+		--provider-url "$(URL)"
+
+exam-swe:
+	bash eval_documents/exam_swebench.sh \
+		--student-path $(CURDIR) \
+		--moulinette-path $(CURDIR)/moulinette \
+		--env-file $(CURDIR)/.env \
+		--model-name "$(MODEL)" \
+		--provider-url "$(URL)"
+
+exam: exam-sandbox exam-mbpp exam-swe
+
 # ── clean ─────────────────────────────────────────────────────────────────────
 clean:
 	find . -type d -name __pycache__ ! -path "./.venv/*" ! -path "./moulinette/*" \
@@ -92,6 +118,11 @@ help:
 	@echo "  mcp-mbpp         start MBPP MCP server on port 8000"
 	@echo "  mcp-swebench     start SWE-bench MCP server on port 8001"
 	@echo "  clean            remove __pycache__ and .pyc files"
+	@echo ""
+	@echo "  exam-sandbox     run sandbox exam (14 tests, ~2 min)"
+	@echo "  exam-mbpp        run MBPP exam    (5 tasks, ~5 min)"
+	@echo "  exam-swe         run SWE-bench exam (3 tasks, ~45 min)"
+	@echo "  exam             run all three exams in sequence"
 	@echo ""
 	@echo "  Override defaults:  make mbpp MODEL=deepseek/deepseek-r1:free TASK=/tmp/t.json"
 	@echo ""
