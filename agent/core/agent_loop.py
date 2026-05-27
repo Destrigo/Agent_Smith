@@ -31,8 +31,9 @@ class AgentLoop:
         request = LLMRequest(
             model=self.llm.current_model,
             messages=state.messages,
-            max_tokens=min(
-                1024, self.max_output_tokens - state.total_output_tokens),
+            max_tokens=max(
+                1, min(1024,
+                       self.max_output_tokens - state.total_output_tokens)),
             stop_sequences=["<end_code>", "Observation:"])
         return self.llm.complete(request)
 
