@@ -124,6 +124,8 @@ def main() -> None:
             solution="", iterations=0, total_requests=0, total_input_tokens=0,
             total_output_tokens=0, total_time_seconds=0.0, error=str(exc))
     finally:
+        if "sandbox" in dir() and hasattr(sandbox, "_mcp_client"):
+            sandbox._mcp_client.close()
         logger.info("Stopping and removing Docker container...")
         docker_mgr.cleanup()
 

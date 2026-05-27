@@ -98,8 +98,12 @@ def main() -> None:
         max_output_tokens=args.max_output_tokens,
         max_time_seconds=args.timeout)
     user_message = build_task_message(task)
-    result = loop.run(task_id=str(task.task_id), benchmark="mbpp",
-                      user_message=user_message)
+    try:
+        result = loop.run(task_id=str(task.task_id), benchmark="mbpp",
+                          user_message=user_message)
+    finally:
+        if hasattr(sandbox, "_mcp_client"):
+            sandbox._mcp_client.close()
 
     output_path = Path(args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
