@@ -3,6 +3,9 @@ import re
 from mcp_server import mcp_server as mcp
 from shared_tools._testbed import testbed
 
+_MAX_RESULTS = 200
+
+
 @mcp.tool()
 def search_function_or_class_definition_in_code(name: str):
     results = []
@@ -23,6 +26,11 @@ def search_function_or_class_definition_in_code(name: str):
                             results.append(
                                 f"{path}:{i} {line.rstrip()}"
                             )
+                            if len(results) >= _MAX_RESULTS:
+                                results.append(
+                                    f"[TRUNCATED: more than {_MAX_RESULTS} "
+                                    "definitions found]")
+                                return results
             except Exception:
                 continue
 
