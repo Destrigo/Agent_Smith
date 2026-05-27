@@ -29,7 +29,14 @@ def run_tests(
     if code is not None and test_list is not None:
         combined = code + "\n" + "\n".join(test_list)
         try:
-            namespace: dict = {}
+            # Restrict builtins to prevent the agent from importing arbitrary
+            # modules or accessing dangerous builtins through this code path.
+            _blocked = {"eval", "exec", "compile", "__import__", "open",
+                        "input", "breakpoint"}
+            import builtins as _bi
+            safe_builtins = {k: v for k, v in vars(_bi).items()
+                             if k not in _blocked}
+            namespace: dict = {"__builtins__": safe_builtins}
             exec(combined, namespace)  # noqa: S102
             return {"success": True, "output": "ALL TESTS PASSED",
                     "stdout": "", "stderr": "", "exit_code": 0}
