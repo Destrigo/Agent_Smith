@@ -26,8 +26,8 @@ class LLMManager:
 
         if not api_keys:
             raise ValueError(
-                f"No API keys found for provider '{provider_name}'."
-                "Set them as environment variables, eg. OPENROUTER_API_KEY or"
+                f"No API keys found for provider '{provider_name}'. "
+                "Set them as environment variables, eg. OPENROUTER_API_KEY or "
                 "OPENROUTER_API_KEY_1, OPENROUTER_API_KEY_2, ...")
 
     @classmethod

@@ -35,7 +35,7 @@ class SandboxResult(BaseModel):
         parts: list[str] = []
         if not self.success and self.error:
             if "timeout" in self.error.lower():
-                parts.append("[SANDBOX] Execution timed out after limit."
+                parts.append("[SANDBOX] Execution timed out after limit. "
                              "Partial output preserved below.")
             elif "MemoryError" in self.error:
                 parts.append("[SANDBOX] Execution exceeded memory limit and "
