@@ -307,7 +307,12 @@ class Sandbox:
             text = sep.join(str(a) for a in args) + end
             target.write(text)
 
-        self._namespace["print"] = _sandbox_print
+        # Execute in a per-step snapshot so that a timed-out thread cannot
+        # mutate self._namespace while the next step's thread is also running.
+        # On success the snapshot is merged back; on timeout it is discarded
+        # and self._namespace is left unchanged from before this call.
+        ns_snapshot = dict(self._namespace)
+        ns_snapshot["print"] = _sandbox_print
 
         outcome: Dict[str, Any] = {
             "success": False,
@@ -323,7 +328,7 @@ class Sandbox:
 
         def _run() -> None:
             try:
-                exec(code, self._namespace)  # noqa: S102
+                exec(code, ns_snapshot)  # noqa: S102
                 outcome["success"] = True
             except FinalAnswerSignal as fa:
                 outcome["success"] = True
@@ -399,6 +404,8 @@ class Sandbox:
 
         # Timeout check
         if thread.is_alive():
+            # ns_snapshot may be partially written by the still-running thread;
+            # discard it so self._namespace stays in the last known-good state.
             partial = stdout or stderr or "(no output captured)"
             timeout_msg = (
                 f"[SANDBOX TIMEOUT] Code exceeded the "
@@ -408,6 +415,9 @@ class Sandbox:
             outcome["error"] = timeout_msg
             outcome["observation"] = timeout_msg
             return outcome
+
+        # Thread completed — merge snapshot back into the persistent namespace.
+        self._namespace.update(ns_snapshot)
 
         # Final-answer signal
         if fa_holder:
