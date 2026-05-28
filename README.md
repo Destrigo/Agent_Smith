@@ -26,7 +26,22 @@ Two benchmarks are supported:
 
 - Python ≥ 3.10
 - [uv](https://docs.astral.sh/uv/) package manager
-- Docker (for SWE-bench tasks)
+- **Docker** — required for **both MBPP and SWE-bench** (MBPP runs submitted code in an isolated container; SWE-bench manages full repo containers)
+
+> **Docker must be running before any `make` command.**  
+> Without it every evaluation target will fail immediately with a clear error message.
+>
+> | Platform | How to start Docker |
+> |----------|-------------------|
+> | macOS / Windows | Launch **Docker Desktop** from the Applications menu |
+> | Linux | `sudo systemctl start docker` &nbsp;or&nbsp; `systemctl --user start docker` |
+>
+> After starting Docker, pull the base image once:
+> ```bash
+> make setup-docker   # docker pull python:3.11-slim
+> ```
+>
+> **Windows note:** the exam scripts (`exam_mbpp.sh`, `exam_swebench.sh`) require a bash shell. Use **WSL2** with Docker Desktop's WSL2 backend enabled — they will not run in PowerShell or CMD.
 
 ### Installation
 

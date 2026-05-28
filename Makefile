@@ -1,7 +1,7 @@
 # Suppress uv's "VIRTUAL_ENV does not match project environment" warning
 unexport VIRTUAL_ENV
 
-.PHONY: install sandbox sandbox-mbpp sandbox-swebench \
+.PHONY: install check-docker sandbox sandbox-mbpp sandbox-swebench \
         mbpp swebench run-mbpp run-swebench \
         exam-mbpp exam-swebench exam-sandbox \
         bench-mbpp \
@@ -15,6 +15,23 @@ URL      ?= https://api.mistral.ai/v1
 PROVIDER ?= mistral
 TASK     ?= /tmp/task.json
 OUT      ?= /tmp/solution.json
+
+# ── docker check ──────────────────────────────────────────────────────────────
+# Verifies the Docker daemon is reachable before any target that needs it.
+# Docker is required for BOTH MBPP (code execution) and SWE-bench (containers).
+check-docker:
+	@docker info > /dev/null 2>&1 || { \
+		echo ""; \
+		echo "ERROR: Docker daemon is not running."; \
+		echo "  macOS / Windows : start Docker Desktop, then retry."; \
+		echo "  Linux           : sudo systemctl start docker"; \
+		echo "                    (or: systemctl --user start docker)"; \
+		echo ""; \
+		echo "After Docker is running, pull the base image once:"; \
+		echo "  make setup-docker"; \
+		echo ""; \
+		exit 1; \
+	}
 
 # ── setup ─────────────────────────────────────────────────────────────────────
 install:
@@ -38,7 +55,7 @@ dump-swebench:
 	cd moulinette && uv run python -m moulinette dump --benchmark swebench --output $(TASK)
 
 # ── run agents ────────────────────────────────────────────────────────────────
-mbpp:
+mbpp: check-docker
 	uv run agent-mbpp \
 		--task-file $(TASK) \
 		--output $(OUT) \
@@ -46,7 +63,7 @@ mbpp:
 		--provider-url "$(URL)" \
 		--provider $(PROVIDER)
 
-swebench:
+swebench: check-docker
 	uv run agent-swebench \
 		--task-file $(TASK) \
 		--output $(OUT) \
@@ -55,19 +72,19 @@ swebench:
 		--provider $(PROVIDER)
 
 # ── exam scripts (as used by the evaluator) ──────────────────────────────────
-exam-mbpp:
+exam-mbpp: check-docker
 	./eval_documents/exam_mbpp.sh \
 		--student-path . \
 		--moulinette-path ./moulinette \
 		--env-file .env
 
-exam-swebench:
+exam-swebench: check-docker
 	./eval_documents/exam_swebench.sh \
 		--student-path . \
 		--moulinette-path ./moulinette \
 		--env-file .env
 
-exam-sandbox:
+exam-sandbox: check-docker
 	./eval_documents/exam_sandbox.sh \
 		--student-path . \
 		--moulinette-path ./moulinette \
@@ -82,7 +99,7 @@ bench-mbpp:
 # Usage: make run-mbpp
 #        make run-mbpp MODEL=deepseek/deepseek-r1:free
 #        make run-swebench
-run-mbpp:
+run-mbpp: check-docker
 	@[ -f .env ] || { echo "Copying .env.example → .env"; cp .env.example .env; }
 	cd moulinette && uv run python -m moulinette dump --benchmark mbpp --output $(TASK)
 	uv run agent-mbpp \
@@ -93,7 +110,7 @@ run-mbpp:
 		--provider $(PROVIDER)
 	cd moulinette && uv run python -m moulinette validate mbpp $(TASK) $(OUT)
 
-run-swebench:
+run-swebench: check-docker
 	@[ -f .env ] || { echo "Copying .env.example → .env"; cp .env.example .env; }
 	cd moulinette && uv run python -m moulinette dump --benchmark swebench --output $(TASK)
 	uv run agent-swebench \
@@ -123,11 +140,11 @@ test-eval:
 	uv run pytest tests/test_sandbox_scripts.py -v
 
 # Moulinette tests (uses moulinette's own venv)
-test-moulinette:
+test-moulinette: check-docker
 	cd moulinette && uv run pytest tests/ -v
 
 # Both suites in sequence
-test-all: test test-moulinette
+test-all: check-docker test test-moulinette
 
 # Pull Docker images required by moulinette tests
 # (python:3.11-slim for MBPP; SWE-bench images are fetched on demand)
