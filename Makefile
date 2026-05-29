@@ -132,23 +132,23 @@ validate-swebench:
 # ── test / lint ───────────────────────────────────────────────────────────────
 
 # Main project tests (includes eval_documents sandbox scripts)
-test:
+test: install setup-docker
 	uv run pytest tests/ -v
 
 # eval_documents sandbox scripts only
-test-eval:
+test-eval: install setup-docker
 	uv run pytest tests/test_sandbox_scripts.py -v
 
 # Moulinette tests (uses moulinette's own venv)
-test-moulinette: check-docker
+test-moulinette: install setup-docker
 	cd moulinette && uv run pytest tests/ -v
 
 # Both suites in sequence
-test-all: check-docker test test-moulinette
+test-all: install setup-docker test test-moulinette
 
 # Pull Docker images required by moulinette tests
 # (python:3.11-slim for MBPP; SWE-bench images are fetched on demand)
-setup-docker:
+setup-docker: check-docker
 	docker pull python:3.11-slim
 
 # Fix rootless-Docker lchown issue for SWE-bench tests.
