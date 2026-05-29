@@ -56,9 +56,9 @@ class MCPClient:
 
     async def _connect_http(self, url: str) -> None:
         from mcp import ClientSession
-        from mcp.client.streamable_http import streamablehttp_client
+        from mcp.client.streamable_http import streamable_http_client
 
-        self._transport_ctx = streamablehttp_client(url)
+        self._transport_ctx = streamable_http_client(url)
         read_stream, write_stream, _ = await self._transport_ctx.__aenter__()
 
         self._session_ctx = ClientSession(read_stream, write_stream)
