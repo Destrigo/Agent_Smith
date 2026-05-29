@@ -4,7 +4,7 @@ unexport VIRTUAL_ENV
 .PHONY: install check-docker sandbox sandbox-mbpp sandbox-swebench \
         mbpp swebench run-mbpp run-swebench \
         exam-mbpp exam-swebench exam-sandbox \
-        bench-mbpp \
+        bench-mbpp bench-swebench \
         test test-eval test-moulinette test-all \
         setup-docker fix-docker-userns \
         lint clean help
@@ -92,8 +92,12 @@ exam-sandbox: check-docker
 
 # ── full benchmark sweep ─────────────────────────────────────────────────────
 # N=0 → all 257 tasks   N=20 → first 20   N=20 SHUFFLE=1 → 20 random
-bench-mbpp:
+bench-mbpp: check-docker
 	./scripts/bench_mbpp.sh $(if $(N),--n $(N),) $(if $(SHUFFLE),--shuffle,)
+
+# N=0 → all 6 exam pool tasks   N=3 → first 3   N=3 SHUFFLE=1 → 3 random
+bench-swebench: check-docker
+	./scripts/bench_swebench.sh $(if $(N),--n $(N),) $(if $(SHUFFLE),--shuffle,)
 
 # ── one-shot: dump → run → validate ──────────────────────────────────────────
 # Usage: make run-mbpp
@@ -204,6 +208,10 @@ help:
 	@echo "  mbpp             run MBPP agent     (TASK= OUT= MODEL= URL=)"
 	@echo "  swebench         run SWE-bench agent"
 	@echo "  validate         validate solution with moulinette"
+	@echo ""
+	@echo "  bench-mbpp       run MBPP agent on all (or N) tasks and report score"
+	@echo "  bench-swebench   run SWE-bench agent on all 6 exam pool tasks"
+	@echo "                   (N=3 → first 3, SHUFFLE=1 → random order)"
 	@echo ""
 	@echo "  test             run main project tests (incl. eval_documents)"
 	@echo "  test-eval        run eval_documents sandbox tests only"
