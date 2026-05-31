@@ -9,6 +9,8 @@
 #
 # Results are saved in evaluations/bench_all/<datetime>/
 # A SUMMARY.md is generated at the end.
+#
+# Compatible with bash 3.2+ (macOS default shell).
 
 set -euo pipefail
 
@@ -52,9 +54,10 @@ DATETIME=$(date +"%Y-%m-%d_%H-%M-%S")
 OUT_DIR="$PROJECT_DIR/evaluations/bench_all/$DATETIME"
 LOG_FILE="$OUT_DIR/run.log"
 SUMMARY_FILE="$OUT_DIR/SUMMARY.md"
+RESULTS_FILE="$OUT_DIR/results.tsv"
 mkdir -p "$OUT_DIR"
 
-log() { echo "[$(date +%H:%M:%S)] $*" | tee -a "$LOG_FILE"; }
+log() { printf "[%s] %s\n" "$(date +%H:%M:%S)" "$*" | tee -a "$LOG_FILE"; }
 
 # ── header ────────────────────────────────────────────────────────────────────
 log "=================================================="
@@ -66,10 +69,8 @@ log "SWE:     $([ $RUN_SWE  -eq 1 ] && echo yes || echo no)"
 log "Output:  $OUT_DIR"
 log "=================================================="
 
-# ── summary tracking ──────────────────────────────────────────────────────────
-declare -A MBPP_SCORE
-declare -A SWE_SCORE
-declare -A MODEL_TIME
+# TSV header for results (used to build SUMMARY.md at the end)
+printf "model\tprovider\tmbpp_score\tswe_score\telapsed_min\n" > "$RESULTS_FILE"
 
 # ── run each model ────────────────────────────────────────────────────────────
 TOTAL_MODELS=${#MODELS[@]}
@@ -90,9 +91,7 @@ for ENTRY in "${MODELS[@]}"; do
     MODEL_START=$(date +%s)
 
     # ── MBPP ──────────────────────────────────────────────────────────────────
-    MBPP_PASS="-"
-    MBPP_TOTAL="-"
-    MBPP_PCT="-"
+    MBPP_SCORE="n/a"
 
     if [ $RUN_MBPP -eq 1 ]; then
         log "  Running MBPP..."
@@ -104,21 +103,18 @@ for ENTRY in "${MODELS[@]}"; do
 
         MBPP_RESULT=$(echo "$MBPP_OUT" | grep "^RESULT:" | tail -1 || true)
         if [ -n "$MBPP_RESULT" ]; then
-            MBPP_PASS=$(echo "$MBPP_RESULT" | grep -oP '\d+(?=/)' || echo "0")
-            MBPP_TOTAL=$(echo "$MBPP_RESULT" | grep -oP '(?<=/)\d+' || echo "?")
-            if [ "$MBPP_TOTAL" != "?" ] && [ "$MBPP_TOTAL" -gt 0 ]; then
-                MBPP_PCT=$(echo "scale=1; $MBPP_PASS * 100 / $MBPP_TOTAL" | bc)%
+            MBPP_PASS=$(echo "$MBPP_RESULT" | grep -o '[0-9]*/' | head -1 | tr -d '/')
+            MBPP_TOTAL=$(echo "$MBPP_RESULT" | grep -o '/[0-9]*' | head -1 | tr -d '/')
+            if [ -n "$MBPP_PASS" ] && [ -n "$MBPP_TOTAL" ] && [ "$MBPP_TOTAL" -gt 0 ]; then
+                MBPP_PCT=$(awk "BEGIN {printf \"%.0f\", $MBPP_PASS * 100 / $MBPP_TOTAL}")
+                MBPP_SCORE="${MBPP_PASS}/${MBPP_TOTAL} (${MBPP_PCT}%)"
             fi
         fi
-        log "  MBPP: $MBPP_PASS/$MBPP_TOTAL ($MBPP_PCT)"
+        log "  MBPP: $MBPP_SCORE"
     fi
 
-    MBPP_SCORE["$MODEL"]="$MBPP_PASS/$MBPP_TOTAL ($MBPP_PCT)"
-
     # ── SWE-bench ─────────────────────────────────────────────────────────────
-    SWE_PASS="-"
-    SWE_TOTAL="-"
-    SWE_PCT="-"
+    SWE_SCORE="n/a"
 
     if [ $RUN_SWE -eq 1 ]; then
         log "  Running SWE-bench..."
@@ -127,21 +123,24 @@ for ENTRY in "${MODELS[@]}"; do
 
         SWE_RESULT=$(echo "$SWE_OUT" | grep "^RESULT:" | tail -1 || true)
         if [ -n "$SWE_RESULT" ]; then
-            SWE_PASS=$(echo "$SWE_RESULT" | grep -oP '\d+(?=/)' || echo "0")
-            SWE_TOTAL=$(echo "$SWE_RESULT" | grep -oP '(?<=/)\d+' || echo "?")
-            if [ "$SWE_TOTAL" != "?" ] && [ "$SWE_TOTAL" -gt 0 ]; then
-                SWE_PCT=$(echo "scale=1; $SWE_PASS * 100 / $SWE_TOTAL" | bc)%
+            SWE_PASS=$(echo "$SWE_RESULT" | grep -o '[0-9]*/' | head -1 | tr -d '/')
+            SWE_TOTAL=$(echo "$SWE_RESULT" | grep -o '/[0-9]*' | head -1 | tr -d '/')
+            if [ -n "$SWE_PASS" ] && [ -n "$SWE_TOTAL" ] && [ "$SWE_TOTAL" -gt 0 ]; then
+                SWE_PCT=$(awk "BEGIN {printf \"%.0f\", $SWE_PASS * 100 / $SWE_TOTAL}")
+                SWE_SCORE="${SWE_PASS}/${SWE_TOTAL} (${SWE_PCT}%)"
             fi
         fi
-        log "  SWE:  $SWE_PASS/$SWE_TOTAL ($SWE_PCT)"
+        log "  SWE:  $SWE_SCORE"
     fi
 
-    SWE_SCORE["$MODEL"]="$SWE_PASS/$SWE_TOTAL ($SWE_PCT)"
-
     MODEL_END=$(date +%s)
-    ELAPSED=$(( (MODEL_END - MODEL_START) / 60 ))
-    MODEL_TIME["$MODEL"]="${ELAPSED}m"
-    log "  Done in ${ELAPSED}m"
+    ELAPSED_MIN=$(( (MODEL_END - MODEL_START) / 60 ))
+    log "  Done in ${ELAPSED_MIN}m"
+
+    # Append to TSV results file
+    printf "%s\t%s\t%s\t%s\t%s\n" \
+        "$MODEL" "$PROVIDER" "$MBPP_SCORE" "$SWE_SCORE" "${ELAPSED_MIN}m" \
+        >> "$RESULTS_FILE"
 done
 
 # ── write SUMMARY.md ──────────────────────────────────────────────────────────
@@ -154,14 +153,13 @@ log "Writing summary to $SUMMARY_FILE"
     echo "## Models Tested"
     echo ""
     echo "| # | Model | Provider | MBPP (257 tasks) | SWE-bench (6 tasks) | Time |"
-    echo "|---|-------|----------|-----------------|---------------------|------|"
+    echo "|---|-------|----------|------------------|---------------------|------|"
 
     IDX=0
-    for ENTRY in "${MODELS[@]}"; do
+    # Read results TSV (skip header line)
+    tail -n +2 "$RESULTS_FILE" | while IFS=$'\t' read -r MODEL PROVIDER MBPP_SCORE SWE_SCORE ELAPSED; do
         IDX=$((IDX + 1))
-        MODEL=$(echo "$ENTRY" | cut -d'|' -f1)
-        PROVIDER=$(echo "$ENTRY" | cut -d'|' -f2)
-        echo "| $IDX | \`$MODEL\` | $PROVIDER | ${MBPP_SCORE[$MODEL]:-n/a} | ${SWE_SCORE[$MODEL]:-n/a} | ${MODEL_TIME[$MODEL]:-?} |"
+        echo "| $IDX | \`$MODEL\` | $PROVIDER | $MBPP_SCORE | $SWE_SCORE | $ELAPSED |"
     done
 
     echo ""
@@ -177,6 +175,17 @@ log "Writing summary to $SUMMARY_FILE"
     echo "- SWE-bench pass threshold (exam): 2/3 random tasks from pool of 6"
     echo "- Detailed logs per model: \`bench_all/<datetime>/<model>/mbpp.log\` and \`swe.log\`"
     echo "- Individual task solutions: inside \`evaluations/bench_mbpp/\` and \`evaluations/bench_swebench/\`"
+    echo ""
+    echo "## Ablation Study"
+    echo ""
+    echo "*(Fill in manually: one before/after comparison of a prompt or tool change.)*"
+    echo ""
+    echo "| Change | Model | Task | Pass Before | Pass After | Iter Before | Iter After |"
+    echo "| ------ | ----- | ---- | ----------- | ---------- | ----------- | ---------- |"
+    echo ""
+    echo "## Conclusions"
+    echo ""
+    echo "*(Fill in: which models to use, which to discard, based on data above.)*"
 } > "$SUMMARY_FILE"
 
 log ""
