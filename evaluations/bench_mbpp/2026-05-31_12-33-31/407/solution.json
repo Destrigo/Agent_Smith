@@ -1,0 +1,29 @@
+{
+  "task_id": "407",
+  "benchmark": "mbpp",
+  "success": true,
+  "solution": "\ndef rearrange_bigger(n):\n    digits = list(str(n))\n    length = len(digits)\n    pivot = -1\n\n    # Step 1: Find the pivot\n    for i in range(length - 2, -1, -1):\n        if digits[i] < digits[i + 1]:\n            pivot = i\n            break\n\n    if pivot == -1:\n        return False\n\n    # Step 2: Find the smallest larger digit to the right of pivot\n    for j in range(length - 1, pivot, -1):\n        if digits[j] > digits[pivot]:\n            break\n\n    # Step 3: Swap pivot and j\n    digits[pivot], digits[j] = digits[j], digits[pivot]\n\n    # Step 4: Reverse the suffix after pivot\n    digits[pivot + 1:] = digits[pivot + 1:][::-1]\n\n    result = int(''.join(digits))\n    return result if result > n else False\n",
+  "system_prompt": "You are an expert Python programmer solving algorithmic coding challenges autonomously.\n\nYou have access to a secure Python sandbox. Use it to test and submit solutions.\n\n════════════════════════════════════════════════\nTOOLS\n════════════════════════════════════════════════\n\nrun_tests(code, test_list) → str\n    Tests your implementation.\n    - code: string with the complete function definition\n    - test_list: list of assert strings from the task (copy exactly)\n    Returns a JSON string. \"ALL TESTS PASSED\" in result means success.\n\nfinal_answer(solution_code: str) → None\n    Submit the solution. Only call when tests pass. Ends the session.\n\n════════════════════════════════════════════════\nRESPONSE FORMAT — MANDATORY\n════════════════════════════════════════════════\n\nEvery response MUST have this exact structure:\n\nThought: <one-line reasoning>\n\n```python\ncode = \"\"\"\ndef function_name(...):\n    ...\n\"\"\"\nresult = run_tests(code, [\"assert function_name(...) == ...\", ...])\nprint(result)\nif \"ALL TESTS PASSED\" in result:\n    final_answer(code)\n```\n<end_code>\n\nSTOP after <end_code>. The sandbox provides the Observation.\nNever write \"Observation:\" yourself.\n\n════════════════════════════════════════════════\nRULES\n════════════════════════════════════════════════\n\n- ALWAYS call run_tests in your code block. Never just define the function.\n- ALWAYS pass test_list: copy the assert statements from the task exactly.\n- run_tests returns a string — check \"ALL TESTS PASSED\" in result.\n- Only call final_answer when tests pass.\n- Do NOT import inside your code (sandbox controls imports).\n",
+  "iterations": 1,
+  "total_requests": 1,
+  "total_input_tokens": 993,
+  "total_output_tokens": 367,
+  "total_time_seconds": 2.0567049980163574,
+  "steps": [
+    {
+      "step": 1,
+      "input_tokens": 993,
+      "output_tokens": 367,
+      "request_time_ms": 2045.7709579995935,
+      "timestamp": "2026-05-31T12:52:08.065367",
+      "api_url": "https://api.mistral.ai/v1",
+      "model_name": "mistral-small-latest",
+      "llm_output": "Thought: The task is to rearrange the digits of a given number to form the next bigger number. If no such number exists, return False. This is a classic next permutation problem. The approach involves finding the first digit from the right that is smaller than the digit next to it, then finding the smallest digit larger than it to the right, swapping them, and finally reversing the suffix to get the smallest possible number larger than the original.\n\n```python\ncode = \"\"\"\ndef rearrange_bigger(n):\n    digits = list(str(n))\n    length = len(digits)\n    pivot = -1\n\n    # Step 1: Find the pivot\n    for i in range(length - 2, -1, -1):\n        if digits[i] < digits[i + 1]:\n            pivot = i\n            break\n\n    if pivot == -1:\n        return False\n\n    # Step 2: Find the smallest larger digit to the right of pivot\n    for j in range(length - 1, pivot, -1):\n        if digits[j] > digits[pivot]:\n            break\n\n    # Step 3: Swap pivot and j\n    digits[pivot], digits[j] = digits[j], digits[pivot]\n\n    # Step 4: Reverse the suffix after pivot\n    digits[pivot + 1:] = digits[pivot + 1:][::-1]\n\n    result = int(''.join(digits))\n    return result if result > n else False\n\"\"\"\nresult = run_tests(code, [\n    \"assert rearrange_bigger(10)==False\",\n    \"assert rearrange_bigger(102)==120\"\n])\nprint(result)\nif \"ALL TESTS PASSED\" in result:\n    final_answer(code)\n```",
+      "sandbox_input": "code = \"\"\"\ndef rearrange_bigger(n):\n    digits = list(str(n))\n    length = len(digits)\n    pivot = -1\n\n    # Step 1: Find the pivot\n    for i in range(length - 2, -1, -1):\n        if digits[i] < digits[i + 1]:\n            pivot = i\n            break\n\n    if pivot == -1:\n        return False\n\n    # Step 2: Find the smallest larger digit to the right of pivot\n    for j in range(length - 1, pivot, -1):\n        if digits[j] > digits[pivot]:\n            break\n\n    # Step 3: Swap pivot and j\n    digits[pivot], digits[j] = digits[j], digits[pivot]\n\n    # Step 4: Reverse the suffix after pivot\n    digits[pivot + 1:] = digits[pivot + 1:][::-1]\n\n    result = int(''.join(digits))\n    return result if result > n else False\n\"\"\"\nresult = run_tests(code, [\n    \"assert rearrange_bigger(10)==False\",\n    \"assert rearrange_bigger(102)==120\"\n])\nprint(result)\nif \"ALL TESTS PASSED\" in result:\n    final_answer(code)",
+      "sandbox_output": "Output:\n{\n  \"success\": true,\n  \"output\": \"ALL TESTS PASSED\",\n  \"stdout\": \"\",\n  \"stderr\": \"\",\n  \"exit_code\": 0\n}\n",
+      "retries": 0
+    }
+  ],
+  "error": null,
+  "timestamp": "2026-05-31T12:52:08.065462"
+}
