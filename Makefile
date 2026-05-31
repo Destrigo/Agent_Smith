@@ -4,7 +4,7 @@ unexport VIRTUAL_ENV
 .PHONY: install check-docker sandbox sandbox-mbpp sandbox-swebench \
         mbpp swebench run-mbpp run-swebench \
         exam-mbpp exam-swebench exam-sandbox \
-        bench-mbpp bench-swebench \
+        bench-mbpp bench-swebench bench-all \
         test test-eval test-moulinette test-all \
         setup-docker fix-docker-userns \
         lint clean help
@@ -98,6 +98,14 @@ bench-mbpp: check-docker
 # N=0 → all 6 exam pool tasks   N=3 → first 3   N=3 SHUFFLE=1 → 3 random
 bench-swebench: check-docker
 	./scripts/bench_swebench.sh $(if $(N),--n $(N),) $(if $(SHUFFLE),--shuffle,)
+
+# Run all 11 models sequentially: MBPP (257 tasks) + SWE-bench (6 tasks)
+# Options: make bench-all MBPP_ONLY=1 / SWE_ONLY=1 / N=20 (quick test)
+bench-all: check-docker
+	./scripts/bench_all.sh \
+		$(if $(MBPP_ONLY),--mbpp-only,) \
+		$(if $(SWE_ONLY),--swe-only,) \
+		$(if $(N),--n $(N),)
 
 # ── one-shot: dump → run → validate ──────────────────────────────────────────
 # Usage: make run-mbpp
