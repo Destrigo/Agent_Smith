@@ -1,0 +1,29 @@
+{
+  "task_id": "223",
+  "benchmark": "mbpp",
+  "success": true,
+  "solution": "\ndef is_majority(arr, n, x):\n    # Use the actual length to avoid out‑of‑range errors if n is larger than len(arr)\n    length = min(n, len(arr))\n\n    # Find first occurrence of x\n    first = -1\n    for i in range(length):\n        if arr[i] == x:\n            first = i\n            break\n    if first == -1:\n        return False\n\n    # Find last occurrence of x\n    last = -1\n    for i in range(length - 1, -1, -1):\n        if arr[i] == x:\n            last = i\n            break\n\n    count = last - first + 1\n    return count > n / 2\n",
+  "system_prompt": "You are an expert Python programmer solving algorithmic coding challenges autonomously.\n\nYou have access to a secure Python sandbox. Use it to test and submit solutions.\n\n════════════════════════════════════════════════\nTOOLS\n════════════════════════════════════════════════\n\nrun_tests(code, test_list) → str\n    Tests your implementation.\n    - code: string with the complete function definition\n    - test_list: list of assert strings from the task (copy exactly)\n    Returns a JSON string. \"ALL TESTS PASSED\" in result means success.\n\nfinal_answer(solution_code: str) → None\n    Submit the solution. Only call when tests pass. Ends the session.\n\n════════════════════════════════════════════════\nRESPONSE FORMAT — MANDATORY\n════════════════════════════════════════════════\n\nEvery response MUST have this exact structure:\n\nThought: <one-line reasoning>\n\n```python\ncode = \"\"\"\ndef function_name(...):\n    ...\n\"\"\"\nresult = run_tests(code, [\"assert function_name(...) == ...\", ...])\nprint(result)\nif \"ALL TESTS PASSED\" in result:\n    final_answer(code)\n```\n<end_code>\n\nSTOP after <end_code>. The sandbox provides the Observation.\nNever write \"Observation:\" yourself.\n\n════════════════════════════════════════════════\nRULES\n════════════════════════════════════════════════\n\n- ALWAYS call run_tests in your code block. Never just define the function.\n- ALWAYS pass test_list: copy the assert statements from the task exactly.\n- run_tests returns a string — check \"ALL TESTS PASSED\" in result.\n- Only call final_answer when tests pass.\n- Do NOT import inside your code (sandbox controls imports).\n",
+  "iterations": 1,
+  "total_requests": 2,
+  "total_input_tokens": 3096,
+  "total_output_tokens": 1374,
+  "total_time_seconds": 12.654375314712524,
+  "steps": [
+    {
+      "step": 1,
+      "input_tokens": 3096,
+      "output_tokens": 1374,
+      "request_time_ms": 12645.61459000106,
+      "timestamp": "2026-06-01T18:34:26.023271",
+      "api_url": "https://api.groq.com/openai/v1",
+      "model_name": "groq/compound",
+      "llm_output": "Thought: Implement `is_majority` by locating the first and last positions of `x` within the bounds of the provided array length `n` (capped by the actual array size to avoid index errors). The count is `last - first + 1`; `x` is a majority if this count exceeds `n/2`.\n\n```python\ncode = \"\"\"\ndef is_majority(arr, n, x):\n    # Use the actual length to avoid out‑of‑range errors if n is larger than len(arr)\n    length = min(n, len(arr))\n\n    # Find first occurrence of x\n    first = -1\n    for i in range(length):\n        if arr[i] == x:\n            first = i\n            break\n    if first == -1:\n        return False\n\n    # Find last occurrence of x\n    last = -1\n    for i in range(length - 1, -1, -1):\n        if arr[i] == x:\n            last = i\n            break\n\n    count = last - first + 1\n    return count > n / 2\n\"\"\"\nresult = run_tests(code, [\n    \"assert is_majority([1, 1, 2, 4, 4, 4, 6, 6], 8, 4) == False\",\n    \"assert is_majority([1, 1, 1, 2, 2], 5, 1) == True\",\n    \"assert is_majority([1, 1, 2, 2], 5, 1) == False\"\n])\nprint(result)\nif \"ALL TESTS PASSED\" in result:\n    final_answer(code)\n```",
+      "sandbox_input": "code = \"\"\"\ndef is_majority(arr, n, x):\n    # Use the actual length to avoid out‑of‑range errors if n is larger than len(arr)\n    length = min(n, len(arr))\n\n    # Find first occurrence of x\n    first = -1\n    for i in range(length):\n        if arr[i] == x:\n            first = i\n            break\n    if first == -1:\n        return False\n\n    # Find last occurrence of x\n    last = -1\n    for i in range(length - 1, -1, -1):\n        if arr[i] == x:\n            last = i\n            break\n\n    count = last - first + 1\n    return count > n / 2\n\"\"\"\nresult = run_tests(code, [\n    \"assert is_majority([1, 1, 2, 4, 4, 4, 6, 6], 8, 4) == False\",\n    \"assert is_majority([1, 1, 1, 2, 2], 5, 1) == True\",\n    \"assert is_majority([1, 1, 2, 2], 5, 1) == False\"\n])\nprint(result)\nif \"ALL TESTS PASSED\" in result:\n    final_answer(code)",
+      "sandbox_output": "Output:\n{\n  \"success\": true,\n  \"output\": \"ALL TESTS PASSED\",\n  \"stdout\": \"\",\n  \"stderr\": \"\",\n  \"exit_code\": 0\n}\n",
+      "retries": 1
+    }
+  ],
+  "error": null,
+  "timestamp": "2026-06-01T18:34:26.023338"
+}
