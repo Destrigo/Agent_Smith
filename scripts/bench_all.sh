@@ -20,17 +20,21 @@ PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 # ── models to benchmark ───────────────────────────────────────────────────────
 # Format: "model_id|provider|url"
 MODELS=(
-    # "mistral-small-latest|mistral|https://api.mistral.ai/v1"
-    # "mistral-medium-latest|mistral|https://api.mistral.ai/v1"
-    # "mistral-large-latest|mistral|https://api.mistral.ai/v1"
-    # "codestral-latest|mistral|https://api.mistral.ai/v1"
-    # "devstral-latest|mistral|https://api.mistral.ai/v1"
-    # "ministral-8b-latest|mistral|https://api.mistral.ai/v1"
-    # "nvidia/nemotron-3-super-120b-a12b:free|openrouter|https://openrouter.ai/api/v1"
-    # "openai/gpt-oss-120b:free|openrouter|https://openrouter.ai/api/v1"
-    # "moonshotai/kimi-k2.6:free|openrouter|https://openrouter.ai/api/v1"
-    # "google/gemma-4-31b-it:free|openrouter|https://openrouter.ai/api/v1"
-    "poolside/laguna-m.1:free|openrouter|https://openrouter.ai/api/v1"
+    # ── Already completed ──────────────────────────────────────────────────────
+    # "mistral-small-latest|mistral|https://api.mistral.ai/v1"         # 232/257 90%  SWE 3/6
+    # "mistral-medium-latest|mistral|https://api.mistral.ai/v1"        # 232/257 90%  SWE 6/6
+    # "mistral-large-latest|mistral|https://api.mistral.ai/v1"         # 233/257 91%  SWE 6/6
+    # "codestral-latest|mistral|https://api.mistral.ai/v1"             # 225/257 88%  SWE 3/6
+    # "devstral-latest|mistral|https://api.mistral.ai/v1"              # 232/257 90%  SWE 2/6
+    # "ministral-8b-latest|mistral|https://api.mistral.ai/v1"          # 217/257 84%  SWE 4/6
+    # "openai/gpt-oss-120b:free|openrouter|https://openrouter.ai/api/v1" # 238/257 93% SWE 2/6 (495m!)
+
+    # ── Remaining: Groq ───────────────────────────────────────────────────────
+    "groq/compound|groq|https://api.groq.com/openai/v1"
+    "groq/compound-mini|groq|https://api.groq.com/openai/v1"
+    "openai/gpt-oss-20b|groq|https://api.groq.com/openai/v1"
+    "llama-3.1-8b-instant|groq|https://api.groq.com/openai/v1"
+    "llama-3.3-70b-versatile|groq|https://api.groq.com/openai/v1"
 )
 
 # ── arg parsing ───────────────────────────────────────────────────────────────
