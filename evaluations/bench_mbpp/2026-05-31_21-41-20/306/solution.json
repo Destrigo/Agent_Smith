@@ -1,0 +1,29 @@
+{
+  "task_id": "306",
+  "benchmark": "mbpp",
+  "success": true,
+  "solution": "\ndef max_sum_increasing_subseq(a, n, index, k):\n    # index is i (0‑based), k > i\n    # DP for max sum increasing subsequence ending at each position up to index\n    dp = [0] * n\n    for j in range(index + 1):\n        dp[j] = a[j]  # subsequence containing only a[j]\n        for p in range(j):\n            if a[p] < a[j]:\n                dp[j] = max(dp[j], dp[p] + a[j])\n    # find best predecessor among positions <= index\n    best = 0\n    for p in range(index + 1):\n        if a[p] < a[k]:\n            best = max(best, dp[p])\n    return a[k] + best\n",
+  "system_prompt": "You are an expert Python programmer solving algorithmic coding challenges autonomously.\n\nYou have access to a secure Python sandbox. Use it to test and submit solutions.\n\n════════════════════════════════════════════════\nTOOLS\n════════════════════════════════════════════════\n\nrun_tests(code, test_list) → str\n    Tests your implementation.\n    - code: string with the complete function definition\n    - test_list: list of assert strings from the task (copy exactly)\n    Returns a JSON string. \"ALL TESTS PASSED\" in result means success.\n\nfinal_answer(solution_code: str) → None\n    Submit the solution. Only call when tests pass. Ends the session.\n\n════════════════════════════════════════════════\nRESPONSE FORMAT — MANDATORY\n════════════════════════════════════════════════\n\nEvery response MUST have this exact structure:\n\nThought: <one-line reasoning>\n\n```python\ncode = \"\"\"\ndef function_name(...):\n    ...\n\"\"\"\nresult = run_tests(code, [\"assert function_name(...) == ...\", ...])\nprint(result)\nif \"ALL TESTS PASSED\" in result:\n    final_answer(code)\n```\n<end_code>\n\nSTOP after <end_code>. The sandbox provides the Observation.\nNever write \"Observation:\" yourself.\n\n════════════════════════════════════════════════\nRULES\n════════════════════════════════════════════════\n\n- ALWAYS call run_tests in your code block. Never just define the function.\n- ALWAYS pass test_list: copy the assert statements from the task exactly.\n- run_tests returns a string — check \"ALL TESTS PASSED\" in result.\n- Only call final_answer when tests pass.\n- Do NOT import inside your code (sandbox controls imports).\n",
+  "iterations": 1,
+  "total_requests": 1,
+  "total_input_tokens": 568,
+  "total_output_tokens": 782,
+  "total_time_seconds": 25.695270776748657,
+  "steps": [
+    {
+      "step": 1,
+      "input_tokens": 568,
+      "output_tokens": 782,
+      "request_time_ms": 25691.96516700049,
+      "timestamp": "2026-05-31T23:40:03.740918",
+      "api_url": "https://openrouter.ai/api/v1",
+      "model_name": "openai/gpt-oss-120b:free",
+      "llm_output": "Let's code.Thought: Compute DP for prefix up to i, then add best predecessor sum to a[k].\n\n```python\ncode = \"\"\"\ndef max_sum_increasing_subseq(a, n, index, k):\n    # index is i (0‑based), k > i\n    # DP for max sum increasing subsequence ending at each position up to index\n    dp = [0] * n\n    for j in range(index + 1):\n        dp[j] = a[j]  # subsequence containing only a[j]\n        for p in range(j):\n            if a[p] < a[j]:\n                dp[j] = max(dp[j], dp[p] + a[j])\n    # find best predecessor among positions <= index\n    best = 0\n    for p in range(index + 1):\n        if a[p] < a[k]:\n            best = max(best, dp[p])\n    return a[k] + best\n\"\"\"\nresult = run_tests(code, [\n    \"assert max_sum_increasing_subseq([1, 101, 2, 3, 100, 4, 5 ], 7, 2, 5) == 7\",\n    \"assert max_sum_increasing_subseq([11, 15, 19, 21, 26, 28, 31], 7, 2, 4) == 71\"\n])\nprint(result)\nif \"ALL TESTS PASSED\" in result:\n    final_answer(code)\n```\n",
+      "sandbox_input": "code = \"\"\"\ndef max_sum_increasing_subseq(a, n, index, k):\n    # index is i (0‑based), k > i\n    # DP for max sum increasing subsequence ending at each position up to index\n    dp = [0] * n\n    for j in range(index + 1):\n        dp[j] = a[j]  # subsequence containing only a[j]\n        for p in range(j):\n            if a[p] < a[j]:\n                dp[j] = max(dp[j], dp[p] + a[j])\n    # find best predecessor among positions <= index\n    best = 0\n    for p in range(index + 1):\n        if a[p] < a[k]:\n            best = max(best, dp[p])\n    return a[k] + best\n\"\"\"\nresult = run_tests(code, [\n    \"assert max_sum_increasing_subseq([1, 101, 2, 3, 100, 4, 5 ], 7, 2, 5) == 7\",\n    \"assert max_sum_increasing_subseq([11, 15, 19, 21, 26, 28, 31], 7, 2, 4) == 71\"\n])\nprint(result)\nif \"ALL TESTS PASSED\" in result:\n    final_answer(code)",
+      "sandbox_output": "Output:\n{\n  \"success\": true,\n  \"output\": \"ALL TESTS PASSED\",\n  \"stdout\": \"\",\n  \"stderr\": \"\",\n  \"exit_code\": 0\n}\n",
+      "retries": 0
+    }
+  ],
+  "error": null,
+  "timestamp": "2026-05-31T23:40:03.740934"
+}

@@ -1,0 +1,29 @@
+{
+  "task_id": "407",
+  "benchmark": "mbpp",
+  "success": true,
+  "solution": "\ndef rearrange_bigger(n):\n    # Convert number to list of digits\n    digits = list(str(n))\n    # Find the pivot: the rightmost index i where digits[i] < digits[i+1]\n    i = len(digits) - 2\n    while i >= 0 and digits[i] >= digits[i + 1]:\n        i -= 1\n    if i == -1:\n        return False  # no larger permutation\n    # Find the smallest digit on right side larger than digits[i]\n    j = len(digits) - 1\n    while digits[j] <= digits[i]:\n        j -= 1\n    # Swap them\n    digits[i], digits[j] = digits[j], digits[i]\n    # Reverse the suffix after i\n    digits[i + 1:] = reversed(digits[i + 1:])\n    # Convert back to int\n    return int(''.join(digits))\n\n",
+  "system_prompt": "You are an expert Python programmer solving algorithmic coding challenges autonomously.\n\nYou have access to a secure Python sandbox. Use it to test and submit solutions.\n\n════════════════════════════════════════════════\nTOOLS\n════════════════════════════════════════════════\n\nrun_tests(code, test_list) → str\n    Tests your implementation.\n    - code: string with the complete function definition\n    - test_list: list of assert strings from the task (copy exactly)\n    Returns a JSON string. \"ALL TESTS PASSED\" in result means success.\n\nfinal_answer(solution_code: str) → None\n    Submit the solution. Only call when tests pass. Ends the session.\n\n════════════════════════════════════════════════\nRESPONSE FORMAT — MANDATORY\n════════════════════════════════════════════════\n\nEvery response MUST have this exact structure:\n\nThought: <one-line reasoning>\n\n```python\ncode = \"\"\"\ndef function_name(...):\n    ...\n\"\"\"\nresult = run_tests(code, [\"assert function_name(...) == ...\", ...])\nprint(result)\nif \"ALL TESTS PASSED\" in result:\n    final_answer(code)\n```\n<end_code>\n\nSTOP after <end_code>. The sandbox provides the Observation.\nNever write \"Observation:\" yourself.\n\n════════════════════════════════════════════════\nRULES\n════════════════════════════════════════════════\n\n- ALWAYS call run_tests in your code block. Never just define the function.\n- ALWAYS pass test_list: copy the assert statements from the task exactly.\n- run_tests returns a string — check \"ALL TESTS PASSED\" in result.\n- Only call final_answer when tests pass.\n- Do NOT import inside your code (sandbox controls imports).\n",
+  "iterations": 1,
+  "total_requests": 1,
+  "total_input_tokens": 481,
+  "total_output_tokens": 307,
+  "total_time_seconds": 9.7982759475708,
+  "steps": [
+    {
+      "step": 1,
+      "input_tokens": 481,
+      "output_tokens": 307,
+      "request_time_ms": 9795.30516700106,
+      "timestamp": "2026-06-01T00:48:33.209871",
+      "api_url": "https://openrouter.ai/api/v1",
+      "model_name": "openai/gpt-oss-120b:free",
+      "llm_output": "We will implement typical algorithm.Thought: Implement next permutation; return False if none, else integer.\n\n```python\ncode = \"\"\"\ndef rearrange_bigger(n):\n    # Convert number to list of digits\n    digits = list(str(n))\n    # Find the pivot: the rightmost index i where digits[i] < digits[i+1]\n    i = len(digits) - 2\n    while i >= 0 and digits[i] >= digits[i + 1]:\n        i -= 1\n    if i == -1:\n        return False  # no larger permutation\n    # Find the smallest digit on right side larger than digits[i]\n    j = len(digits) - 1\n    while digits[j] <= digits[i]:\n        j -= 1\n    # Swap them\n    digits[i], digits[j] = digits[j], digits[i]\n    # Reverse the suffix after i\n    digits[i + 1:] = reversed(digits[i + 1:])\n    # Convert back to int\n    return int(''.join(digits))\n\n\"\"\"\nresult = run_tests(code, [\n    \"assert rearrange_bigger(10)==False\",\n    \"assert rearrange_bigger(102)==120\"\n])\nprint(result)\nif \"ALL TESTS PASSED\" in result:\n    final_answer(code)\n```\n",
+      "sandbox_input": "code = \"\"\"\ndef rearrange_bigger(n):\n    # Convert number to list of digits\n    digits = list(str(n))\n    # Find the pivot: the rightmost index i where digits[i] < digits[i+1]\n    i = len(digits) - 2\n    while i >= 0 and digits[i] >= digits[i + 1]:\n        i -= 1\n    if i == -1:\n        return False  # no larger permutation\n    # Find the smallest digit on right side larger than digits[i]\n    j = len(digits) - 1\n    while digits[j] <= digits[i]:\n        j -= 1\n    # Swap them\n    digits[i], digits[j] = digits[j], digits[i]\n    # Reverse the suffix after i\n    digits[i + 1:] = reversed(digits[i + 1:])\n    # Convert back to int\n    return int(''.join(digits))\n\n\"\"\"\nresult = run_tests(code, [\n    \"assert rearrange_bigger(10)==False\",\n    \"assert rearrange_bigger(102)==120\"\n])\nprint(result)\nif \"ALL TESTS PASSED\" in result:\n    final_answer(code)",
+      "sandbox_output": "Output:\n{\n  \"success\": true,\n  \"output\": \"ALL TESTS PASSED\",\n  \"stdout\": \"\",\n  \"stderr\": \"\",\n  \"exit_code\": 0\n}\n",
+      "retries": 0
+    }
+  ],
+  "error": null,
+  "timestamp": "2026-06-01T00:48:33.209897"
+}
