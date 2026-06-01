@@ -30,10 +30,10 @@ MODELS=(
     # "openai/gpt-oss-120b:free|openrouter|https://openrouter.ai/api/v1" # 238/257 93% SWE 2/6 (495m!)
 
     # ── Remaining: Groq ───────────────────────────────────────────────────────
-    "groq/compound|groq|https://api.groq.com/openai/v1"
-    "groq/compound-mini|groq|https://api.groq.com/openai/v1"
-    "openai/gpt-oss-20b|groq|https://api.groq.com/openai/v1"
-    "llama-3.1-8b-instant|groq|https://api.groq.com/openai/v1"
+    # "groq/compound|groq|https://api.groq.com/openai/v1"
+    # "groq/compound-mini|groq|https://api.groq.com/openai/v1"
+    # "openai/gpt-oss-20b|groq|https://api.groq.com/openai/v1"
+    # "llama-3.1-8b-instant|groq|https://api.groq.com/openai/v1"
     "llama-3.3-70b-versatile|groq|https://api.groq.com/openai/v1"
 )
 
