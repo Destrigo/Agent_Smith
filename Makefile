@@ -4,7 +4,7 @@ unexport VIRTUAL_ENV
 .PHONY: install check-docker sandbox sandbox-mbpp sandbox-swebench \
         mbpp swebench run-mbpp run-swebench \
         exam-mbpp exam-swebench exam-sandbox \
-        bench-mbpp bench-swebench bench-all \
+        bench-mbpp bench-swebench bench-all bench-extra \
         test test-eval test-moulinette test-all \
         setup-docker fix-docker-userns \
         lint clean help
@@ -106,6 +106,11 @@ bench-all: check-docker
 		$(if $(MBPP_ONLY),--mbpp-only,) \
 		$(if $(SWE_ONLY),--swe-only,) \
 		$(if $(N),--n $(N),)
+
+# Run extra SWE-bench tasks (beyond EXAM_POOL) across all models for the report.
+# Options: make bench-extra JOBS=4  (parallel model runs, default 1)
+bench-extra: check-docker
+	./scripts/bench_extra_swe.sh $(if $(JOBS),--jobs $(JOBS),)
 
 # ── one-shot: dump → run → validate ──────────────────────────────────────────
 # Usage: make run-mbpp

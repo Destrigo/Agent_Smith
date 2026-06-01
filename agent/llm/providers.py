@@ -85,4 +85,5 @@ PROVIDER_REGISTRY: dict[str, Callable[[LLMRequest], LLMResponse]] = {
     "gemini": _generic,
     "mistral": _generic,
     "together": _generic,
+    "deepseek": _generic,
 }

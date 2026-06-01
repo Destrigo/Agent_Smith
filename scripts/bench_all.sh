@@ -29,12 +29,11 @@ MODELS=(
     # "ministral-8b-latest|mistral|https://api.mistral.ai/v1"          # 217/257 84%  SWE 4/6
     # "openai/gpt-oss-120b:free|openrouter|https://openrouter.ai/api/v1" # 238/257 93% SWE 2/6 (495m!)
 
-    # ── Remaining: Groq ───────────────────────────────────────────────────────
-    # "groq/compound|groq|https://api.groq.com/openai/v1"
-    # "groq/compound-mini|groq|https://api.groq.com/openai/v1"
-    # "openai/gpt-oss-20b|groq|https://api.groq.com/openai/v1"
-    # "llama-3.1-8b-instant|groq|https://api.groq.com/openai/v1"
-    "llama-3.3-70b-versatile|groq|https://api.groq.com/openai/v1"
+    # ── Remaining: Mistral (smaller/newer) ───────────────────────────────────
+    "ministral-3b-latest|mistral|https://api.mistral.ai/v1"
+    "mistral-tiny-latest|mistral|https://api.mistral.ai/v1"
+    "open-mistral-nemo|mistral|https://api.mistral.ai/v1"
+    "devstral-medium-latest|mistral|https://api.mistral.ai/v1"
 )
 
 # ── arg parsing ───────────────────────────────────────────────────────────────
