@@ -92,6 +92,37 @@ Iteration and token columns are **per-task averages** across the 6 pool tasks.
 | `sympy__sympy-14711` | 2/9 | 6.0 | 17.9 | 197.2 | 162,998 |
 | `django__django-16082` *(extra)* | 1/9 | — | — | — | — |
 
+### 2.5 `mistral-medium-latest` — dettaglio per task
+
+Unico modello a passare tutti e 7 i task. Dati dal run canonico (`2026-05-31`).
+
+| Task | Pass | Iter | Input Tok | Output Tok | Time (s) | Avg req (ms) | Patch lines | First-edit step | First-pass step | Gap |
+|------|------|------|-----------|------------|----------|--------------|-------------|-----------------|-----------------|-----|
+| `sympy__sympy-13480` | ✓ | **4** | 14,775 | 519 | **10.4** | 1,909 | 13 | 1 | — | — |
+| `pydata__xarray-4629` | ✓ | **4** | 24,940 | 865 | 18.6 | 3,638 | 13 | 1 | — | — |
+| `sympy__sympy-18189` | ✓ | **4** | 18,458 | 1,071 | 21.4 | 4,606 | 13 | 1 | — | — |
+| `django__django-11066` | ✓ | 7 | 44,768 | 923 | 19.1 | 2,483 | 13 | 1 | — | — |
+| `sympy__sympy-14711` | ✓ | 7 | 31,683 | 1,177 | 24.2 | 2,946 | 13 | 1 | — | — |
+| `scikit-learn__scikit-learn-13439` | ✓ | 7 | 37,901 | 994 | 21.2 | 2,159 | 21 | 1 | 6 | **1** |
+| `django__django-16082` *(extra)* | ✓ | 15 | 167,078 | 2,346 | 56.7 | 3,418 | 12 | — | — | — |
+| **Average (pool)** | **6/6** | **5.5** | **28,754** | **925** | **19.1** | **2,957** | **14** | **1.0** | | |
+
+**Colonne:**
+- *Iter* — iterazioni totali prima di `final_answer()`
+- *Input/Output Tok* — token consumati per l'intero task
+- *Avg req (ms)* — latenza media per singola chiamata LLM
+- *Patch lines* — righe nel diff finale
+- *First-edit step* — iterazione in cui l'agente ha scritto codice per la prima volta
+- *First-pass step* — iterazione in cui i test sono passati per la prima volta
+- *Gap* — iterazioni extra dopo il primo test verde prima di `final_answer()`
+
+**Osservazioni:**
+- Il modello tocca il file corretto **sempre al primo step** (first-edit = 1 su tutti i task del pool) — esplora e scrive nella stessa iterazione.
+- I 3 task SymPy si risolvono in 4 iterazioni con meno di 19k token — patch minimali (13 righe), problema ben localizzabile.
+- `scikit-learn` è il task più complesso: 21 righe di patch, ma l'agente ha rilevato il test verde al passo 6 e ha inviato subito (gap = 1).
+- `django__django-16082` (extra) è anomalo: 15 iter e 167k token — 6× più token della media del pool. Il problema richiede più contesto (espressioni Django ORM, tipi misti) e l'agente ha impiegato più cicli di esplorazione.
+- **0 retry** su tutti i task: nessun rate-limit colpito, latenza stabile (~3s/req).
+
 ---
 
 ## 3. Provider Reliability
