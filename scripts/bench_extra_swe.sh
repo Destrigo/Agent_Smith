@@ -30,8 +30,8 @@ MODELS=(
     "ministral-8b-latest|mistral|https://api.mistral.ai/v1"
     "openai/gpt-oss-120b:free|openrouter|https://openrouter.ai/api/v1"
     "ministral-3b-latest|mistral|https://api.mistral.ai/v1"
-    "mistral-tiny-latest|mistral|https://api.mistral.ai/v1"
-    "open-mistral-nemo|mistral|https://api.mistral.ai/v1"
+    # "mistral-tiny-latest|mistral|https://api.mistral.ai/v1"
+    # "open-mistral-nemo|mistral|https://api.mistral.ai/v1"
     "devstral-medium-latest|mistral|https://api.mistral.ai/v1"
 )
 
