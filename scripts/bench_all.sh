@@ -30,10 +30,10 @@ MODELS=(
     # "openai/gpt-oss-120b:free|openrouter|https://openrouter.ai/api/v1" # 238/257 93% SWE 2/6 (495m!)
 
     # ── Remaining: Mistral (smaller/newer) ───────────────────────────────────
-    # "ministral-3b-latest|mistral|https://api.mistral.ai/v1"
-    # "mistral-tiny-latest|mistral|https://api.mistral.ai/v1"
-    # "open-mistral-nemo|mistral|https://api.mistral.ai/v1"
-    "devstral-medium-latest|mistral|https://api.mistral.ai/v1"
+    # "ministral-3b-latest|mistral|https://api.mistral.ai/v1"  # 109/257 42%  SWE 1/6
+    # "devstral-medium-latest|mistral|https://api.mistral.ai/v1" # 221/257 86% SWE 3/6
+    "mistral-tiny-latest|mistral|https://api.mistral.ai/v1"
+    "open-mistral-nemo|mistral|https://api.mistral.ai/v1"
 )
 
 # ── arg parsing ───────────────────────────────────────────────────────────────
