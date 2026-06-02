@@ -1,6 +1,6 @@
 # Agent Smith — Model Benchmark Report
 
-> **Status:** 10 of 11 models complete. `open-mistral-nemo` results pending.
+> **Status:** Complete — 11 models, 7 SWE-bench tasks.
 
 ---
 
@@ -22,7 +22,7 @@ Eleven models were evaluated across two benchmark suites. All models run on **fr
 | 8 | `ministral-3b-latest` | Mistral | 3B smallest Mistral (lower bound) |
 | 9 | `openai/gpt-oss-120b:free` | OpenRouter | Large open-source model (non-Mistral) |
 | 10 | `mistral-tiny-latest` | Mistral | Sub-3B absolute lower bound |
-| 11 | `open-mistral-nemo` | Mistral | *(pending)* |
+| 11 | `open-mistral-nemo` | Mistral | Nemo 7B — mid-size reference |
 
 **Selection rationale:** All models were chosen for free-tier availability. The Mistral family provides a controlled size-scaling ablation (3B → 8B → small → medium → large). `gpt-oss-120b` serves as a non-Mistral reference point. Code-specialised models (`codestral`, `devstral`) are included to test whether specialisation helps on SWE-bench.
 
@@ -60,7 +60,7 @@ MBPP used the full 257-task test split. SWE-bench was validated by the moulinett
 | `ministral-8b-latest` | 217 | 84% |
 | `ministral-3b-latest` | 109 | 42% |
 | `mistral-tiny-latest` | 11 | **4%** |
-| `open-mistral-nemo` | *(pending)* | — |
+| `open-mistral-nemo` | 15 | **6%** |
 
 ### 2.2 SWE-bench — per model (6 pool tasks + 1 extra)
 
@@ -77,8 +77,8 @@ Iteration and token columns are **per-task averages** across the 6 pool tasks.
 | `devstral-latest` | 2/6 | 0/1 | 2/7 | 21.2 | 1,149,891 | 9,786 | 34.0 |
 | `openai/gpt-oss-120b:free` | 2/6 | 0/1 | 2/7 | 18.5 | 527,321 | 18,442 | 154.4 |
 | `ministral-3b-latest` | 1/6 | 0/1 | 1/7 | 11.2 | 513,950 | 33,135 | 28.3 |
-| `mistral-tiny-latest` | **0/6** | 0/1 | **0/7** | — | — | — | — |
-| `open-mistral-nemo` | *(pending)* | — | — | — | — | — | — |
+| `mistral-tiny-latest` | 0/6 | 0/1 | **0/7** | — | — | — | 61 |
+| `open-mistral-nemo` | 0/6 | 0/1 | **0/7** | — | — | — | 59 |
 
 ### 2.3 SWE-bench — per task (9 complete models)
 
@@ -194,6 +194,7 @@ We compare SWE-bench performance and efficiency across the Mistral parameter lad
 | Model | Scale | MBPP | SWE pass | Avg Iter | In Tok / task |
 |-------|-------|------|----------|----------|---------------|
 | `mistral-tiny-latest` | <1B | 4% | 0/6 (0%) | — | — |
+| `open-mistral-nemo` | ~7B | 6% | 0/6 (0%) | — | — |
 | `ministral-3b-latest` | ~3B | 42% | 1/6 (17%) | 11.2 | 85,658 |
 | `ministral-8b-latest` | ~8B | 84% | 4/6 (67%) | 12.3 | 104,479 |
 | `mistral-small-latest` | ~22B | 90% | 3/6 (50%) | 14.2 | 128,379 |
@@ -202,16 +203,17 @@ We compare SWE-bench performance and efficiency across the Mistral parameter lad
 
 ```
 SWE Pass Rate vs Parameter Scale (Mistral family):
-tiny │ 0%
- 3B  │███ 17%
- 8B  │█████████████████████ 67%
-22B  │████████████████ 50%
-70B  │████████████████████████████████ 100%
-123B │████████████████████████████████ 100%
-     └──────────────────────────────────────
+tiny  (<1B) │ 0%
+nemo  (~7B) │ 0%
+  3B        │███ 17%
+  8B        │█████████████████████ 67%
+ 22B        │████████████████ 50%
+ 70B        │████████████████████████████████ 100%
+123B        │████████████████████████████████ 100%
+            └──────────────────────────────────────
 ```
 
-**Finding:** SWE-bench performance scales non-monotonically. `mistral-tiny` (~1B) scores 0% on both MBPP and SWE — below the minimum threshold for any useful reasoning task. The jump from 3B (17%) to 8B (67%) is the largest relative gain. The 22B model underperforms the 8B (50% vs 67%), likely due to different pre-training mix. The critical threshold is ~70B: both medium and large achieve 100% at similar token efficiency. Strikingly, `mistral-medium` uses **4× fewer input tokens** than `ministral-8b` despite a higher pass rate — it finds solutions faster.
+**Finding:** There is a hard capability cliff below ~3B parameters: both `mistral-tiny` (<1B, 4% MBPP) and `open-mistral-nemo` (~7B, 6% MBPP) score 0% on SWE-bench despite nemo having more parameters than ministral-3b. This suggests that Nemo's architecture or training mix is less suited to agentic code tasks than the Ministral line. The jump from 3B (17%) to 8B (67%) is the sharpest useful gain. The critical threshold for 100% SWE accuracy is ~70B.
 
 ### 5.2 Code-specialised vs general-purpose
 
