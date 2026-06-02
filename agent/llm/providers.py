@@ -74,16 +74,24 @@ def _openrouter(request: LLMRequest) -> LLMResponse:
         request, headers={"HTTP-Referer": "https://github.com/agent-smith"})
 
 
-# All other providers use the plain OpenAI-compatible endpoint.
+def _gemini(request: LLMRequest) -> LLMResponse:
+    # Gemini via OpenAI-compat endpoint (requires GEMINI_API_KEY).
+    # Use: AGENT_PROVIDER_URL=https://generativelanguage.googleapis.com/v1beta/openai
+    return openai_compatible_call(request)
+
+
 def _generic(request: LLMRequest) -> LLMResponse:
     return openai_compatible_call(request)
 
 
+# Registry maps provider name → callable.
+# Provider name is resolved from AGENT_PROVIDER env var or --provider flag.
+# API key is loaded from <PROVIDER_UPPER>_API_KEY (e.g. MISTRAL_API_KEY).
 PROVIDER_REGISTRY: dict[str, Callable[[LLMRequest], LLMResponse]] = {
-    "openrouter": _openrouter,
-    "groq": _generic,
-    "gemini": _generic,
-    "mistral": _generic,
-    "together": _generic,
-    "deepseek": _generic,
+    "openrouter": _openrouter,   # https://openrouter.ai/api/v1
+    "mistral":    _generic,      # https://api.mistral.ai/v1  ← recommended (best benchmark results)
+    "groq":       _generic,      # https://api.groq.com/openai/v1
+    "gemini":     _gemini,       # https://generativelanguage.googleapis.com/v1beta/openai
+    "together":   _generic,      # https://api.together.xyz/v1
+    "deepseek":   _generic,      # https://api.deepseek.com/v1
 }

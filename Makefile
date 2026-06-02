@@ -10,7 +10,7 @@ unexport VIRTUAL_ENV
         lint clean help
 
 # ── defaults ──────────────────────────────────────────────────────────────────
-MODEL    ?= mistral-small-latest
+MODEL    ?= mistral-medium-latest
 URL      ?= https://api.mistral.ai/v1
 PROVIDER ?= mistral
 TASK     ?= /tmp/task.json

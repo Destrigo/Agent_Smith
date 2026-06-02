@@ -94,6 +94,24 @@ Iteration and token columns are **per-task averages** across the 6 pool tasks.
 | `django__django-16082` *(extra 1)* | 1/9 | — | — | — | — |
 | `django__django-13406` *(extra 2)* | 4/9 | 17.2 | 17.0 | — | — |
 
+### 2.4 `django__django-13406` — running details (extra 2, all 9 models)
+
+Task: *Queryset with values()/values_list() crashes when recreated from a pickled query.*
+
+| Model | Pass | Iter | Input Tok | Output Tok | Time (s) | Retries |
+|-------|------|------|-----------|------------|----------|---------|
+| `mistral-medium-latest` | ✓ | 24 | 228,286 | 3,677 | 104.9 | 0 |
+| `mistral-large-latest` | ✓ | 11 | 122,282 | 6,933 | 204.8 | 5 |
+| `ministral-8b-latest` | ✓ | **13** | 124,233 | 4,024 | **53.5** | 0 |
+| `openai/gpt-oss-120b:free` | ✓ | 21 | 144,960 | 2,061 | 170.8 | 0 |
+| `codestral-latest` | ✗ | 5 | 44,730 | 898 | 16.2 | 0 |
+| `mistral-small-latest` | ✗ | 26 | 316,236 | 3,106 | 493.6 | **43** |
+| `devstral-medium-latest` | ✗ | 25 | 317,505 | 1,081 | 98.6 | 0 |
+| `devstral-latest` | ✗ | 27 | 316,960 | 1,208 | 99.8 | 0 |
+| `ministral-3b-latest` | ✗ | 13 | 107,882 | 10,000 | 64.4 | 0 |
+
+**Notes:** `mistral-tiny-latest` and `open-mistral-nemo` were excluded (0% on all prior tasks). `mistral-small-latest` hit 43 rate-limit retries, inflating its wall-clock time to 493 s. `ministral-3b-latest` hit the 10,000 output token limit. Interestingly, `ministral-8b-latest` solves this in only 13 iterations at 53 s — the most efficient passer.
+
 ### 2.5 `mistral-medium-latest` — dettaglio per task
 
 Only model to pass all 7 tasks. Data from the canonical run (`2026-05-31`).

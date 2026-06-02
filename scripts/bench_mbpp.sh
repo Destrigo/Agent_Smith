@@ -34,7 +34,7 @@ done
 # ── load .env ─────────────────────────────────────────────────────────────────
 [ -f "$PROJECT_DIR/.env" ] && set -a && source "$PROJECT_DIR/.env" && set +a
 
-MODEL="${AGENT_MODEL:-mistral-small-latest}"
+MODEL="${AGENT_MODEL:-mistral-medium-latest}"
 URL="${AGENT_PROVIDER_URL:-https://api.mistral.ai/v1}"
 PROVIDER="${AGENT_PROVIDER:-mistral}"
 
