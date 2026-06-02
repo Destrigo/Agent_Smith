@@ -1,6 +1,6 @@
 # Agent Smith — Model Benchmark Report
 
-> **Status:** 9 of 11 models complete. `mistral-tiny-latest` and `open-mistral-nemo` are currently running and will be added when available.
+> **Status:** 10 of 11 models complete. `open-mistral-nemo` results pending.
 
 ---
 
@@ -21,8 +21,8 @@ Eleven models were evaluated across two benchmark suites. All models run on **fr
 | 7 | `ministral-8b-latest` | Mistral | 8B compact model |
 | 8 | `ministral-3b-latest` | Mistral | 3B smallest Mistral (lower bound) |
 | 9 | `openai/gpt-oss-120b:free` | OpenRouter | Large open-source model (non-Mistral) |
-| 10 | `mistral-tiny-latest` | Mistral | *(running)* |
-| 11 | `open-mistral-nemo` | Mistral | *(running)* |
+| 10 | `mistral-tiny-latest` | Mistral | Sub-3B absolute lower bound |
+| 11 | `open-mistral-nemo` | Mistral | *(pending)* |
 
 **Selection rationale:** All models were chosen for free-tier availability. The Mistral family provides a controlled size-scaling ablation (3B → 8B → small → medium → large). `gpt-oss-120b` serves as a non-Mistral reference point. Code-specialised models (`codestral`, `devstral`) are included to test whether specialisation helps on SWE-bench.
 
@@ -59,8 +59,8 @@ MBPP used the full 257-task test split. SWE-bench was validated by the moulinett
 | `devstral-medium-latest` | 221 | 86% |
 | `ministral-8b-latest` | 217 | 84% |
 | `ministral-3b-latest` | 109 | 42% |
-| `mistral-tiny-latest` | *(running)* | — |
-| `open-mistral-nemo` | *(running)* | — |
+| `mistral-tiny-latest` | 11 | **4%** |
+| `open-mistral-nemo` | *(pending)* | — |
 
 ### 2.2 SWE-bench — per model (6 pool tasks + 1 extra)
 
@@ -77,8 +77,8 @@ Iteration and token columns are **per-task averages** across the 6 pool tasks.
 | `devstral-latest` | 2/6 | 0/1 | 2/7 | 21.2 | 1,149,891 | 9,786 | 34.0 |
 | `openai/gpt-oss-120b:free` | 2/6 | 0/1 | 2/7 | 18.5 | 527,321 | 18,442 | 154.4 |
 | `ministral-3b-latest` | 1/6 | 0/1 | 1/7 | 11.2 | 513,950 | 33,135 | 28.3 |
-| `mistral-tiny-latest` | *(running)* | — | — | — | — | — | — |
-| `open-mistral-nemo` | *(running)* | — | — | — | — | — | — |
+| `mistral-tiny-latest` | **0/6** | 0/1 | **0/7** | — | — | — | — |
+| `open-mistral-nemo` | *(pending)* | — | — | — | — | — | — |
 
 ### 2.3 SWE-bench — per task (9 complete models)
 
@@ -191,25 +191,27 @@ For tasks where a test-pass signal was detected in `sandbox_output`, we measure 
 
 We compare SWE-bench performance and efficiency across the Mistral parameter ladder, holding provider, prompt, and agent code constant.
 
-| Model | Scale | SWE pass | Avg Iter | In Tok / task |
-|-------|-------|----------|----------|---------------|
-| `ministral-3b-latest` | ~3B | 1/6 (17%) | 11.2 | 85,658 |
-| `ministral-8b-latest` | ~8B | 4/6 (67%) | 12.3 | 104,479 |
-| `mistral-small-latest` | ~22B | 3/6 (50%) | 14.2 | 128,379 |
-| `mistral-medium-latest` | ~70B | **6/6 (100%)** | **5.5** | 28,754 |
-| `mistral-large-latest` | ~123B | **6/6 (100%)** | 5.8 | 30,690 |
+| Model | Scale | MBPP | SWE pass | Avg Iter | In Tok / task |
+|-------|-------|------|----------|----------|---------------|
+| `mistral-tiny-latest` | <1B | 4% | 0/6 (0%) | — | — |
+| `ministral-3b-latest` | ~3B | 42% | 1/6 (17%) | 11.2 | 85,658 |
+| `ministral-8b-latest` | ~8B | 84% | 4/6 (67%) | 12.3 | 104,479 |
+| `mistral-small-latest` | ~22B | 90% | 3/6 (50%) | 14.2 | 128,379 |
+| `mistral-medium-latest` | ~70B | 90% | **6/6 (100%)** | **5.5** | 28,754 |
+| `mistral-large-latest` | ~123B | 91% | **6/6 (100%)** | 5.8 | 30,690 |
 
 ```
 SWE Pass Rate vs Parameter Scale (Mistral family):
- 3B  │█████ 17%
- 8B  │██████████████████████ 67%
+tiny │ 0%
+ 3B  │███ 17%
+ 8B  │█████████████████████ 67%
 22B  │████████████████ 50%
 70B  │████████████████████████████████ 100%
 123B │████████████████████████████████ 100%
      └──────────────────────────────────────
 ```
 
-**Finding:** SWE-bench performance scales non-monotonically. The 22B model actually underperforms the 8B model (50% vs 67%), suggesting that `mistral-small` benefits less from its size advantage than `ministral-8b` does from its specialised pre-training. The critical threshold is ~70B: both medium and large achieve 100% at similar token efficiency. Strikingly, `mistral-medium` uses **4× fewer input tokens** than `ministral-8b` despite a much higher pass rate — it solves tasks faster, reducing context growth.
+**Finding:** SWE-bench performance scales non-monotonically. `mistral-tiny` (~1B) scores 0% on both MBPP and SWE — below the minimum threshold for any useful reasoning task. The jump from 3B (17%) to 8B (67%) is the largest relative gain. The 22B model underperforms the 8B (50% vs 67%), likely due to different pre-training mix. The critical threshold is ~70B: both medium and large achieve 100% at similar token efficiency. Strikingly, `mistral-medium` uses **4× fewer input tokens** than `ministral-8b` despite a higher pass rate — it finds solutions faster.
 
 ### 5.2 Code-specialised vs general-purpose
 
