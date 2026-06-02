@@ -94,7 +94,7 @@ Iteration and token columns are **per-task averages** across the 6 pool tasks.
 
 ### 2.5 `mistral-medium-latest` — dettaglio per task
 
-Unico modello a passare tutti e 7 i task. Dati dal run canonico (`2026-05-31`).
+Only model to pass all 7 tasks. Data from the canonical run (`2026-05-31`).
 
 | Task | Pass | Iter | Input Tok | Output Tok | Time (s) | Avg req (ms) | Patch lines | First-edit step | First-pass step | Gap |
 |------|------|------|-----------|------------|----------|--------------|-------------|-----------------|-----------------|-----|
@@ -107,21 +107,21 @@ Unico modello a passare tutti e 7 i task. Dati dal run canonico (`2026-05-31`).
 | `django__django-16082` *(extra)* | ✓ | 15 | 167,078 | 2,346 | 56.7 | 3,418 | 12 | — | — | — |
 | **Average (pool)** | **6/6** | **5.5** | **28,754** | **925** | **19.1** | **2,957** | **14** | **1.0** | | |
 
-**Colonne:**
-- *Iter* — iterazioni totali prima di `final_answer()`
-- *Input/Output Tok* — token consumati per l'intero task
-- *Avg req (ms)* — latenza media per singola chiamata LLM
-- *Patch lines* — righe nel diff finale
-- *First-edit step* — iterazione in cui l'agente ha scritto codice per la prima volta
-- *First-pass step* — iterazione in cui i test sono passati per la prima volta
-- *Gap* — iterazioni extra dopo il primo test verde prima di `final_answer()`
+**Column definitions:**
+- *Iter* — total iterations before `final_answer()`
+- *Input/Output Tok* — tokens consumed across the entire task
+- *Avg req (ms)* — mean latency per LLM call
+- *Patch lines* — lines in the final unified diff
+- *First-edit step* — iteration at which the agent first wrote code to any file
+- *First-pass step* — iteration at which tests first passed
+- *Gap* — additional iterations after first test pass before `final_answer()`
 
-**Osservazioni:**
-- Il modello tocca il file corretto **sempre al primo step** (first-edit = 1 su tutti i task del pool) — esplora e scrive nella stessa iterazione.
-- I 3 task SymPy si risolvono in 4 iterazioni con meno di 19k token — patch minimali (13 righe), problema ben localizzabile.
-- `scikit-learn` è il task più complesso: 21 righe di patch, ma l'agente ha rilevato il test verde al passo 6 e ha inviato subito (gap = 1).
-- `django__django-16082` (extra) è anomalo: 15 iter e 167k token — 6× più token della media del pool. Il problema richiede più contesto (espressioni Django ORM, tipi misti) e l'agente ha impiegato più cicli di esplorazione.
-- **0 retry** su tutti i task: nessun rate-limit colpito, latenza stabile (~3s/req).
+**Key observations:**
+- The model edits the correct file **at step 1 on every pool task** — it locates and patches in the same iteration, with no wasted exploration.
+- The 3 SymPy tasks resolve in 4 iterations under 19k tokens — minimal patches (13 lines), problem well-localised from the issue description.
+- `scikit-learn` is the most complex task: 21 patch lines, but the agent detected a passing test at step 6 and submitted immediately (gap = 1).
+- `django__django-16082` (extra) is an outlier: 15 iterations and 167k tokens — 6× the pool average. The ORM mixed-type problem requires broader context exploration across Django internals.
+- **0 retries** across all tasks: no rate-limit hits, stable latency (~3 s/req).
 
 ---
 
