@@ -1,6 +1,6 @@
 # Agent Smith — Model Benchmark Report
 
-> **Status:** Complete — 11 models, 7 SWE-bench tasks.
+> **Status:** Complete — 11 models, 8 SWE-bench tasks.
 
 ---
 
@@ -38,7 +38,8 @@ Seven SWE-bench tasks were used: the 6 mandated exam-pool tasks plus one extra (
 | `sympy__sympy-13480` | SymPy | Hyperbolic function simplification |
 | `sympy__sympy-18189` | SymPy | Diophantine solver |
 | `sympy__sympy-14711` | SymPy | Physics vector printing |
-| `django__django-16082` | Django | MOD operator `output_field` resolution *(extra)* |
+| `django__django-16082` | Django | MOD operator `output_field` resolution *(extra 1)* |
+| `django__django-13406` | Django | Queryset pickle/unpickle with values()/values_list() *(extra 2)* |
 
 MBPP used the full 257-task test split. SWE-bench was validated by the moulinette evaluator (Docker-based official harness, pass threshold 2/3 exam tasks).
 
@@ -66,19 +67,19 @@ MBPP used the full 257-task test split. SWE-bench was validated by the moulinett
 
 Iteration and token columns are **per-task averages** across the 6 pool tasks.
 
-| Model | Pool (6) | Extra (1) | Total | Avg Iter | Total In Tok | Total Out Tok | Avg Time (s) |
-|-------|----------|-----------|-------|----------|--------------|---------------|--------------|
-| `mistral-medium-latest` | **6/6** | **1/1** | **7/7** | **5.5** | 172,525 | 5,549 | **19.1** |
-| `mistral-large-latest` | **6/6** | 0/1 | 6/7 | 5.8 | 184,141 | 6,286 | 64.1 |
-| `ministral-8b-latest` | 4/6 | 0/1 | 4/7 | 12.3 | 626,875 | 24,178 | 42.8 |
-| `codestral-latest` | 3/6 | 0/1 | 3/7 | 7.8 | 347,345 | 14,892 | 19.4 |
-| `mistral-small-latest` | 3/6 | 0/1 | 3/7 | 14.2 | 770,273 | 8,931 | 437.6 |
-| `devstral-medium-latest` | 3/6 | 0/1 | 3/7 | 22.5 | 1,099,660 | 16,474 | 184.1 |
-| `devstral-latest` | 2/6 | 0/1 | 2/7 | 21.2 | 1,149,891 | 9,786 | 34.0 |
-| `openai/gpt-oss-120b:free` | 2/6 | 0/1 | 2/7 | 18.5 | 527,321 | 18,442 | 154.4 |
-| `ministral-3b-latest` | 1/6 | 0/1 | 1/7 | 11.2 | 513,950 | 33,135 | 28.3 |
-| `mistral-tiny-latest` | 0/6 | 0/1 | **0/7** | — | — | — | 61 |
-| `open-mistral-nemo` | 0/6 | 0/1 | **0/7** | — | — | — | 59 |
+| Model | Pool (6) | Extra-1 | Extra-2 | Total | Avg Iter | Total In Tok | Total Out Tok | Avg Time (s) |
+|-------|----------|---------|---------|-------|----------|--------------|---------------|--------------|
+| `mistral-medium-latest` | **6/6** | **1/1** | **1/1** | **8/8** | **5.5** | 172,525 | 5,549 | **19.1** |
+| `mistral-large-latest` | **6/6** | 0/1 | **1/1** | 7/8 | 5.8 | 184,141 | 6,286 | 64.1 |
+| `ministral-8b-latest` | 4/6 | 0/1 | **1/1** | 5/8 | 12.3 | 626,875 | 24,178 | 42.8 |
+| `codestral-latest` | 3/6 | 0/1 | 0/1 | 3/8 | 7.8 | 347,345 | 14,892 | 19.4 |
+| `mistral-small-latest` | 3/6 | 0/1 | 0/1 | 3/8 | 14.2 | 770,273 | 8,931 | 437.6 |
+| `devstral-medium-latest` | 3/6 | 0/1 | 0/1 | 3/8 | 22.5 | 1,099,660 | 16,474 | 184.1 |
+| `openai/gpt-oss-120b:free` | 2/6 | 0/1 | **1/1** | 3/8 | 18.5 | 527,321 | 18,442 | 154.4 |
+| `devstral-latest` | 2/6 | 0/1 | 0/1 | 2/8 | 21.2 | 1,149,891 | 9,786 | 34.0 |
+| `ministral-3b-latest` | 1/6 | 0/1 | 0/1 | 1/8 | 11.2 | 513,950 | 33,135 | 28.3 |
+| `mistral-tiny-latest` | 0/6 | 0/1 | — | **0/7** | — | — | — | — |
+| `open-mistral-nemo` | 0/6 | 0/1 | — | **0/7** | — | — | — | — |
 
 ### 2.3 SWE-bench — per task (9 complete models)
 
@@ -90,7 +91,8 @@ Iteration and token columns are **per-task averages** across the 6 pool tasks.
 | `sympy__sympy-18189` | 5/9 | 7.6 | 15.0 | 36.4 | 63,793 |
 | `scikit-learn__scikit-learn-13439` | 4/9 | 11.5 | 17.6 | 188.4 | 135,006 |
 | `sympy__sympy-14711` | 2/9 | 6.0 | 17.9 | 197.2 | 162,998 |
-| `django__django-16082` *(extra)* | 1/9 | — | — | — | — |
+| `django__django-16082` *(extra 1)* | 1/9 | — | — | — | — |
+| `django__django-13406` *(extra 2)* | 4/9 | 17.2 | 17.0 | — | — |
 
 ### 2.5 `mistral-medium-latest` — dettaglio per task
 
@@ -104,7 +106,8 @@ Only model to pass all 7 tasks. Data from the canonical run (`2026-05-31`).
 | `django__django-11066` | ✓ | 7 | 44,768 | 923 | 19.1 | 2,483 | 13 | 1 | — | — |
 | `sympy__sympy-14711` | ✓ | 7 | 31,683 | 1,177 | 24.2 | 2,946 | 13 | 1 | — | — |
 | `scikit-learn__scikit-learn-13439` | ✓ | 7 | 37,901 | 994 | 21.2 | 2,159 | 21 | 1 | 6 | **1** |
-| `django__django-16082` *(extra)* | ✓ | 15 | 167,078 | 2,346 | 56.7 | 3,418 | 12 | — | — | — |
+| `django__django-16082` *(extra 1)* | ✓ | 15 | 167,078 | 2,346 | 56.7 | 3,418 | 12 | — | — | — |
+| `django__django-13406` *(extra 2)* | ✓ | 24 | 228,286 | 3,891 | 104.9 | 3,968 | — | — | — | — |
 | **Average (pool)** | **6/6** | **5.5** | **28,754** | **925** | **19.1** | **2,957** | **14** | **1.0** | | |
 
 **Column definitions:**
