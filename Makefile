@@ -2,12 +2,14 @@
 unexport VIRTUAL_ENV
 
 .PHONY: install check-docker sandbox sandbox-mbpp sandbox-swebench \
+        dump-mbpp dump-swebench \
         mbpp swebench run-mbpp run-swebench \
         exam-mbpp exam-swebench exam-sandbox \
         bench-mbpp bench-swebench bench-all bench-extra \
+        validate-mbpp validate-swebench \
         test test-eval test-moulinette test-all \
         setup-docker fix-docker-userns \
-        lint lint-strict clean help
+        lint lint-strict mcp-mbpp mcp-swebench clean help
 
 # ── defaults ──────────────────────────────────────────────────────────────────
 MODEL    ?= mistral-medium-latest
@@ -18,9 +20,6 @@ MBPP_TASK ?= /tmp/mbpp-task.json
 MBPP_OUT  ?= /tmp/mbpp-solution.json
 SWE_TASK  ?= /tmp/swe-task.json
 SWE_OUT   ?= /tmp/swe-solution.json
-# Legacy TASK/OUT kept for validate targets (backward compat)
-TASK     ?= /tmp/mbpp-task.json
-OUT      ?= /tmp/mbpp-solution.json
 
 # ── docker check ──────────────────────────────────────────────────────────────
 # Verifies the Docker daemon is reachable before any target that needs it.
@@ -63,16 +62,16 @@ dump-swebench:
 # ── run agents ────────────────────────────────────────────────────────────────
 mbpp: check-docker
 	uv run agent-mbpp \
-		--task-file $(TASK) \
-		--output $(OUT) \
+		--task-file $(MBPP_TASK) \
+		--output $(MBPP_OUT) \
 		--model-name "$(MODEL)" \
 		--provider-url "$(URL)" \
 		--provider $(PROVIDER)
 
 swebench: check-docker
 	uv run agent-swebench \
-		--task-file $(TASK) \
-		--output $(OUT) \
+		--task-file $(SWE_TASK) \
+		--output $(SWE_OUT) \
 		--model-name "$(MODEL)" \
 		--provider-url "$(URL)" \
 		--provider $(PROVIDER)
@@ -167,7 +166,7 @@ test-moulinette: install setup-docker
 	cd moulinette && uv run pytest tests/ -v
 
 # Both suites in sequence
-test-all: install setup-docker test test-moulinette
+test-all: test test-moulinette
 
 # Pull Docker images required by moulinette tests
 # (python:3.11-slim for MBPP; SWE-bench images are fetched on demand)
@@ -236,9 +235,10 @@ help:
 	@echo ""
 	@echo "  dump-mbpp        dump an MBPP task  → MBPP_TASK=$(MBPP_TASK)"
 	@echo "  dump-swebench    dump a SWE-bench task → SWE_TASK=$(SWE_TASK)"
-	@echo "  mbpp             run MBPP agent     (TASK= OUT= MODEL= URL=)"
-	@echo "  swebench         run SWE-bench agent"
-	@echo "  validate         validate solution with moulinette"
+	@echo "  mbpp             run MBPP agent     (MBPP_TASK= MBPP_OUT= MODEL= URL=)"
+	@echo "  swebench         run SWE-bench agent (SWE_TASK= SWE_OUT= MODEL= URL=)"
+	@echo "  validate-mbpp    validate MBPP solution with moulinette"
+	@echo "  validate-swebench validate SWE-bench solution with moulinette"
 	@echo ""
 	@echo "  bench-mbpp       run MBPP agent on all (or N) tasks and report score"
 	@echo "  bench-swebench   run SWE-bench agent on all 6 exam pool tasks"
@@ -260,5 +260,5 @@ help:
 	@echo "  mcp-swebench     start SWE-bench MCP server on port 8001"
 	@echo "  clean            remove __pycache__ and .pyc files"
 	@echo ""
-	@echo "  Override defaults:  make mbpp MODEL=deepseek/deepseek-r1:free TASK=/tmp/t.json"
+	@echo "  Override defaults:  make mbpp MODEL=deepseek/deepseek-r1:free MBPP_TASK=/tmp/t.json"
 	@echo ""
