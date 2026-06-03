@@ -193,7 +193,7 @@ fix-docker-userns:
 	echo "Done. SWE-bench eval tests should now pass."
 
 lint:
-	uv run flake8 . --exclude=.venv,moulinette,eval_documents
+	uv run flake8 .
 	uv run mypy . \
 		--warn-return-any \
 		--warn-unused-ignores \
@@ -204,7 +204,7 @@ lint:
 		--exclude eval_documents
 
 lint-strict:
-	uv run flake8 . --exclude=.venv,moulinette,eval_documents
+	uv run flake8 .
 	uv run mypy . --strict \
 		--exclude moulinette \
 		--exclude eval_documents

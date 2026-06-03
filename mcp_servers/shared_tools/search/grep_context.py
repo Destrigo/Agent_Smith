@@ -26,7 +26,7 @@ def grep_context(pattern: str, context_lines: int = 5,
         )
         result = docker_exec(cmd, workdir="/testbed")
         lines = result["stdout"].strip().splitlines()
-        return [l for l in lines if l]
+        return [ln for ln in lines if ln]
 
     results = []
     base = testbed()

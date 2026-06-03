@@ -9,7 +9,7 @@ MCP tool injection, and the static feedback helpers.
 
 import pytest
 from models.sandbox_model import SandboxConfig
-from sandbox.core.sandbox import FinalAnswerSignal, Sandbox
+from sandbox.core.sandbox import Sandbox
 
 
 # ---------------------------------------------------------------------------

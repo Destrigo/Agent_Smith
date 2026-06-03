@@ -28,7 +28,7 @@ def search_code(pattern: str, file_pattern: str = "*.py",
                 workdir="/testbed",
             )
             lines = result["stdout"].strip().splitlines()
-            return [l for l in lines if l]
+            return [ln for ln in lines if ln]
         try:
             matches = []
             with open(specific_file, "r", encoding="utf-8", errors="ignore") as f:

@@ -103,7 +103,7 @@ def main() -> None:
             print(f"[sandbox] WARNING: could not connect to MCP server — {exc}",
                   file=sys.stderr)
 
-    #repl
+    # repl
     print("\n[sandbox] Ready.  Enter Python code (blank line to execute, Ctrl-D to quit).\n")
 
     while True:

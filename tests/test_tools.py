@@ -14,8 +14,6 @@ import os
 import subprocess
 from pathlib import Path
 
-import pytest
-
 # conftest.py adds mcp_servers/ to sys.path so these imports resolve.
 from shared_tools.execution.get_patch import get_patch
 from shared_tools.execution.run_command import run_command

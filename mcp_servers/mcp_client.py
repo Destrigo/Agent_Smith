@@ -10,8 +10,7 @@ plain Python callables that can be injected into the sandbox namespace.
 """
 
 import asyncio
-import json
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict
 
 
 class MCPClient:
@@ -34,7 +33,7 @@ class MCPClient:
     def connect_http(self, url: str) -> None:
         """Connect to an MCP server via streamable-HTTP at *url*."""
         self._loop.run_until_complete(self._connect_http(url))
-    
+
     # Async connect internals
     async def _connect_stdio(self, command: str, args: list) -> None:
         import os

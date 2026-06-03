@@ -85,7 +85,7 @@ def docker_list_files(directory: str, pattern: str = "*") -> list:
     if result["exit_code"] != 0:
         return []
     lines = result["stdout"].strip().splitlines()
-    return [l for l in lines if l]
+    return [ln for ln in lines if ln]
 
 
 # ── search ────────────────────────────────────────────────────────────────────
@@ -95,7 +95,7 @@ def docker_search_code(pattern: str, directory: str,
     cmd = f"grep -rn --include='{file_pattern}' -F {_shell_quote(pattern)} {directory} 2>/dev/null || true"
     result = docker_exec(cmd, workdir=directory)
     lines = result["stdout"].strip().splitlines()
-    return [l for l in lines if l]
+    return [ln for ln in lines if ln]
 
 
 def _shell_quote(s: str) -> str:

@@ -18,7 +18,7 @@ def find_references(name: str, filepath: str = "", line: int = 0):
         )
         result = docker_exec(cmd, workdir="/testbed")
         lines = result["stdout"].strip().splitlines()
-        return [l for l in lines if l]
+        return [ln for ln in lines if ln]
 
     results = []
 
