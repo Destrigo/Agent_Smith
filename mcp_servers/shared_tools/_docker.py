@@ -37,8 +37,8 @@ def docker_read_file(filepath: str) -> str:
 
 # ── write ─────────────────────────────────────────────────────────────────────
 
-def docker_write_file(filepath: str, content: str) -> None:
-    container = _get_container()
+def _write_file_to_container(container, filepath: str, content: str) -> None:
+    """Low-level write: pack content into a tar and put_archive into container."""
     content_bytes = content.encode("utf-8")
     buf = io.BytesIO()
     filename = os.path.basename(filepath)
@@ -51,6 +51,10 @@ def docker_write_file(filepath: str, content: str) -> None:
         tar.addfile(info, io.BytesIO(content_bytes))
     buf.seek(0)
     container.put_archive(dirpath, buf)
+
+
+def docker_write_file(filepath: str, content: str) -> None:
+    _write_file_to_container(_get_container(), filepath, content)
 
 
 # ── exec ──────────────────────────────────────────────────────────────────────

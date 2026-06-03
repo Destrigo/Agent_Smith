@@ -39,6 +39,7 @@ pythonpath = ["."]
 testpaths = ["tests"]
 addopts = "--import-mode=importlib"
 filterwarnings = [
-    # httpx unclosed stream in MCP HTTP transport teardown — not a real error
-    "ignore::RuntimeWarning",
+    # httpx leaves an unclosed aiter_raw coroutine on MCP HTTP transport teardown.
+    # This is an httpx internals issue, not our code.
+    "ignore::pytest.PytestUnraisableExceptionWarning",
 ]

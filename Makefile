@@ -13,8 +13,14 @@ unexport VIRTUAL_ENV
 MODEL    ?= mistral-medium-latest
 URL      ?= https://api.mistral.ai/v1
 PROVIDER ?= mistral
-TASK     ?= /tmp/task.json
-OUT      ?= /tmp/solution.json
+# Separate temp paths so run-mbpp and run-swebench don't overwrite each other
+MBPP_TASK ?= /tmp/mbpp-task.json
+MBPP_OUT  ?= /tmp/mbpp-solution.json
+SWE_TASK  ?= /tmp/swe-task.json
+SWE_OUT   ?= /tmp/swe-solution.json
+# Legacy TASK/OUT kept for validate targets (backward compat)
+TASK     ?= /tmp/mbpp-task.json
+OUT      ?= /tmp/mbpp-solution.json
 
 # ── docker check ──────────────────────────────────────────────────────────────
 # Verifies the Docker daemon is reachable before any target that needs it.
@@ -118,33 +124,33 @@ bench-extra: check-docker
 #        make run-swebench
 run-mbpp: check-docker
 	@[ -f .env ] || { echo "Copying .env.example → .env"; cp .env.example .env; }
-	cd moulinette && uv run python -m moulinette dump --benchmark mbpp --output $(TASK)
+	cd moulinette && uv run python -m moulinette dump --benchmark mbpp --output $(MBPP_TASK)
 	uv run agent-mbpp \
-		--task-file $(TASK) \
-		--output $(OUT) \
+		--task-file $(MBPP_TASK) \
+		--output $(MBPP_OUT) \
 		--model-name "$(MODEL)" \
 		--provider-url "$(URL)" \
 		--provider $(PROVIDER)
-	cd moulinette && uv run python -m moulinette validate mbpp $(TASK) $(OUT)
+	cd moulinette && uv run python -m moulinette validate mbpp $(MBPP_TASK) $(MBPP_OUT)
 
 run-swebench: check-docker
 	@[ -f .env ] || { echo "Copying .env.example → .env"; cp .env.example .env; }
-	cd moulinette && uv run python -m moulinette dump --benchmark swebench --output $(TASK)
+	cd moulinette && uv run python -m moulinette dump --benchmark swebench --output $(SWE_TASK)
 	uv run agent-swebench \
-		--task-file $(TASK) \
-		--output $(OUT) \
+		--task-file $(SWE_TASK) \
+		--output $(SWE_OUT) \
 		--model-name "$(MODEL)" \
 		--provider-url "$(URL)" \
 		--provider $(PROVIDER)
-	cd moulinette && uv run python -m moulinette validate swebench $(TASK) $(OUT)
+	cd moulinette && uv run python -m moulinette validate swebench $(SWE_TASK) $(SWE_OUT)
 
 # ── validate ──────────────────────────────────────────────────────────────────
 # Usage: make validate-mbpp / make validate-swebench
 validate-mbpp:
-	cd moulinette && uv run python -m moulinette validate mbpp $(TASK) $(OUT)
+	cd moulinette && uv run python -m moulinette validate mbpp $(MBPP_TASK) $(MBPP_OUT)
 
 validate-swebench:
-	cd moulinette && uv run python -m moulinette validate swebench $(TASK) $(OUT)
+	cd moulinette && uv run python -m moulinette validate swebench $(SWE_TASK) $(SWE_OUT)
 
 # ── test / lint ───────────────────────────────────────────────────────────────
 
@@ -193,10 +199,10 @@ lint:
 
 # ── mcp servers (standalone) ──────────────────────────────────────────────────
 mcp-mbpp:
-	python mcp_tools_mbpp.py --transport http --port 8000
+	uv run python mcp_tools_mbpp.py --transport http --port 8000
 
 mcp-swebench:
-	python mcp_tools_swebench.py --transport http --port 8001
+	uv run python mcp_tools_swebench.py --transport http --port 8001
 
 # ── clean ─────────────────────────────────────────────────────────────────────
 clean:

@@ -1,9 +1,8 @@
 import logging
-import os
-import io
-import tarfile
 import time
 from typing import Optional
+
+from mcp_servers.shared_tools._docker import _write_file_to_container
 
 
 logger = logging.getLogger(__name__)
@@ -45,16 +44,7 @@ class DockerManager:
         return container
 
     def write_file(self, container_path: str, content: str) -> None:
-        content_bytes = content.encode("utf-8")
-        tar_buffer = io.BytesIO()
-        filename = os.path.basename(container_path)
-        dirpath = os.path.dirname(container_path) or "/"
-        with tarfile.open(fileobj=tar_buffer, mode="w") as tar:
-            info = tarfile.TarInfo(name=filename)
-            info.size = len(content_bytes)
-            tar.addfile(info, io.BytesIO(content_bytes))
-        tar_buffer.seek(0)
-        self._container.put_archive(dirpath, tar_buffer)
+        _write_file_to_container(self._container, container_path, content)
 
     def exec_run(self, command: str, workdir: str = "/testbed") -> str:
         if self._container is None:

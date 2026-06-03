@@ -61,11 +61,9 @@ def main() -> None:
     if args.transport == "stdio":
         mcp_server.run(transport="stdio")
     else:
-        mcp_server.run(
-            transport="streamable-http",
-            host=args.host,
-            port=args.port,
-        )
+        mcp_server.settings.host = args.host
+        mcp_server.settings.port = args.port
+        mcp_server.run(transport="streamable-http")
 
 
 if __name__ == "__main__":

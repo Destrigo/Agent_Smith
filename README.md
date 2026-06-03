@@ -197,7 +197,7 @@ make run-swebench
 
 # Override the model
 make run-mbpp MODEL=mistral-large-latest
-make run-swebench MODEL="openai/gpt-oss-120b:free" URL="https://openrouter.ai/api/v1" PROVIDER=openrouter
+make run-swebench MODEL=mistral-large-latest
 ```
 
 ### MBPP Agent CLI
@@ -445,8 +445,7 @@ agent_smith/
 │
 ├── config/
 │   ├── sandbox_template.json       # Default sandbox configuration
-│   ├── sandbox_template_swebench.json
-│   └── models.yaml                 # Registered model configurations
+│   └── sandbox_template_swebench.json
 │
 ├── eval_documents/                 # Exam scripts (used by the evaluator)
 │   ├── exam_mbpp.sh
