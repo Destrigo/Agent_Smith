@@ -7,7 +7,7 @@ unexport VIRTUAL_ENV
         bench-mbpp bench-swebench bench-all bench-extra \
         test test-eval test-moulinette test-all \
         setup-docker fix-docker-userns \
-        lint clean help
+        lint lint-strict clean help
 
 # ── defaults ──────────────────────────────────────────────────────────────────
 MODEL    ?= mistral-medium-latest
@@ -55,10 +55,10 @@ sandbox-swebench:
 
 # ── dump tasks ────────────────────────────────────────────────────────────────
 dump-mbpp:
-	cd moulinette && uv run python -m moulinette dump --benchmark mbpp --output $(TASK)
+	cd moulinette && uv run python -m moulinette dump --benchmark mbpp --output $(MBPP_TASK)
 
 dump-swebench:
-	cd moulinette && uv run python -m moulinette dump --benchmark swebench --output $(TASK)
+	cd moulinette && uv run python -m moulinette dump --benchmark swebench --output $(SWE_TASK)
 
 # ── run agents ────────────────────────────────────────────────────────────────
 mbpp: check-docker
@@ -193,9 +193,21 @@ fix-docker-userns:
 	echo "Done. SWE-bench eval tests should now pass."
 
 lint:
-	uv run python -m py_compile $$(find . -name "*.py" \
-		! -path "./.venv/*" ! -path "./moulinette/*") \
-		&& echo "All files OK"
+	uv run flake8 . --exclude=.venv,moulinette,eval_documents
+	uv run mypy . \
+		--warn-return-any \
+		--warn-unused-ignores \
+		--ignore-missing-imports \
+		--disallow-untyped-defs \
+		--check-untyped-defs \
+		--exclude moulinette \
+		--exclude eval_documents
+
+lint-strict:
+	uv run flake8 . --exclude=.venv,moulinette,eval_documents
+	uv run mypy . --strict \
+		--exclude moulinette \
+		--exclude eval_documents
 
 # ── mcp servers (standalone) ──────────────────────────────────────────────────
 mcp-mbpp:
@@ -222,8 +234,8 @@ help:
 	@echo "  run-mbpp         one-shot: dump → run MBPP agent → validate"
 	@echo "  run-swebench     one-shot: dump → run SWE-bench agent → validate"
 	@echo ""
-	@echo "  dump-mbpp        dump an MBPP task  → TASK=$(TASK)"
-	@echo "  dump-swebench    dump a SWE-bench task"
+	@echo "  dump-mbpp        dump an MBPP task  → MBPP_TASK=$(MBPP_TASK)"
+	@echo "  dump-swebench    dump a SWE-bench task → SWE_TASK=$(SWE_TASK)"
 	@echo "  mbpp             run MBPP agent     (TASK= OUT= MODEL= URL=)"
 	@echo "  swebench         run SWE-bench agent"
 	@echo "  validate         validate solution with moulinette"
@@ -242,7 +254,8 @@ help:
 	@echo "  fix-docker-userns fix rootless-Docker lchown error for SWE-bench tests"
 	@echo "                   (requires sudo, run once per machine)"
 	@echo ""
-	@echo "  lint             syntax-check all .py files"
+	@echo "  lint             flake8 + mypy (excludes moulinette, eval_documents)"
+	@echo "  lint-strict      flake8 + mypy --strict"
 	@echo "  mcp-mbpp         start MBPP MCP server on port 8000"
 	@echo "  mcp-swebench     start SWE-bench MCP server on port 8001"
 	@echo "  clean            remove __pycache__ and .pyc files"

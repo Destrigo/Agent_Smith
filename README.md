@@ -269,7 +269,10 @@ uv run sandbox config/sandbox_template.json --mcp-stdio "python mcp_tools_mbpp.p
 # With SWE-bench MCP tools via stdio
 uv run sandbox config/sandbox_template.json --mcp-stdio "python mcp_tools_swebench.py"
 
-# With HTTP MCP server
+# With HTTP MCP server (requires the MCP server to be running first)
+# Terminal 1:
+make mcp-mbpp
+# Terminal 2:
 uv run sandbox config/sandbox_template.json --mcp-server http://localhost:8000
 ```
 
@@ -280,14 +283,14 @@ The MCP tool servers can also be started independently for external connections:
 ```bash
 # MBPP MCP server on HTTP port 8000
 make mcp-mbpp
-# equivalent: python mcp_tools_mbpp.py --transport http --port 8000
+# equivalent: uv run python mcp_tools_mbpp.py --transport http --port 8000
 
 # SWE-bench MCP server on HTTP port 8001
 make mcp-swebench
-# equivalent: python mcp_tools_swebench.py --transport http --port 8001
+# equivalent: uv run python mcp_tools_swebench.py --transport http --port 8001
 
 # stdio transport (default — used by the agents internally)
-python mcp_tools_mbpp.py
+uv run python mcp_tools_mbpp.py
 ```
 
 ---
@@ -328,9 +331,9 @@ Each `make exam-*` target calls the corresponding shell script:
 ```
 
 The exam scripts internally:
-1. Use `moulinette dump` to fetch a task from the benchmark dataset
-2. Call `uv run agent-mbpp` / `uv run agent-swebench` with the default model
-3. Pass the solution to `moulinette validate` for scoring
+1. Use `moulinette_eval dump` to fetch a task from the benchmark dataset
+2. Call `uv run python -m agent_mbpp` / `uv run python -m agent_swebench` with the default model
+3. Pass the solution to `moulinette_eval validate` for scoring
 
 ---
 
@@ -441,8 +444,6 @@ agent_smith/
 ├── mydocker/
 │   └── manager.py                  # DockerManager: start/stop SWE-bench containers
 │
-├── eval/                           # Evaluation utilities
-│
 ├── config/
 │   ├── sandbox_template.json       # Default sandbox configuration
 │   └── sandbox_template_swebench.json
@@ -464,10 +465,13 @@ agent_smith/
 │   ├── test_agent.py
 │   ├── test_sandbox.py
 │   ├── test_tools.py
-│   ├── test_eval.py
 │   └── test_sandbox_scripts.py
 │
 ├── evaluations/                    # Committed benchmark output (solution.json files)
+│   ├── bench_all/                  # Full multi-model sweep results
+│   ├── bench_extra_swe/            # Extra SWE-bench tasks results
+│   ├── bench_mbpp/                 # MBPP benchmark results
+│   └── bench_swebench/             # SWE-bench benchmark results
 │
 ├── BENCHMARK_REPORT.md             # Full results for 11 models × 8 SWE tasks
 ├── Makefile                        # All top-level commands
@@ -520,8 +524,12 @@ make swebench MODEL="openai/gpt-oss-120b:free" \
 | `MODEL` | `mistral-medium-latest` | Model name |
 | `URL` | `https://api.mistral.ai/v1` | Provider base URL |
 | `PROVIDER` | `mistral` | Provider name for key lookup |
-| `TASK` | `/tmp/task.json` | Input task file path |
-| `OUT` | `/tmp/solution.json` | Output solution file path |
+| `MBPP_TASK` | `/tmp/mbpp-task.json` | MBPP input task file path |
+| `MBPP_OUT` | `/tmp/mbpp-solution.json` | MBPP output solution file path |
+| `SWE_TASK` | `/tmp/swe-task.json` | SWE-bench input task file path |
+| `SWE_OUT` | `/tmp/swe-solution.json` | SWE-bench output solution file path |
+| `TASK` | `/tmp/mbpp-task.json` | Legacy alias for `MBPP_TASK` (used by `mbpp`/`swebench` targets) |
+| `OUT` | `/tmp/mbpp-solution.json` | Legacy alias for `MBPP_OUT` |
 
 ### Sandbox Configuration (`config/sandbox_template.json`)
 
@@ -560,8 +568,11 @@ make test-moulinette
 # Both suites in sequence
 make test-all
 
-# Syntax check all Python files
+# Lint: flake8 + mypy (excludes moulinette and eval_documents)
 make lint
+
+# Strict lint: flake8 + mypy --strict
+make lint-strict
 ```
 
 ### Rootless Docker Fix (Linux only)
