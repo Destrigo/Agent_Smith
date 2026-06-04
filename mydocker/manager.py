@@ -21,13 +21,21 @@ class DockerManager:
         self._container_id: Optional[str] = None
 
     def _pull_image(self, image: str) -> None:
+        import docker.errors
         try:
             self._client.images.get(image)
             logger.info("Image already cached: %s", image)
-        except Exception:
+        except docker.errors.ImageNotFound:
             logger.info("Pulling image (this may take a few minutes): %s",
                         image)
-            self._client.images.pull(image)
+            try:
+                self._client.api.pull(image, stream=False)
+            except Exception as exc:
+                raise RuntimeError(
+                    f"Failed to pull Docker image '{image}'. "
+                    "Check that the image exists on Docker Hub and your "
+                    f"network is reachable.\nOriginal error: {exc}"
+                ) from exc
             logger.info("Image pulled: %s", image)
 
     def _start_container(self, image: str):
