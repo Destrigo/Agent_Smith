@@ -32,8 +32,9 @@ class DockerManager:
 
     def _start_container(self, image: str):
         container = self._client.containers.run(
-            image, command="tail -f /dev/null", detach=True, remove=False,
-            mem_limit="4g", working_dir="/testbed")
+            image, entrypoint=["tail", "-f", "/dev/null"], detach=True,
+            remove=False, mem_limit="4g", working_dir="/testbed",
+            privileged=True)
         for _ in range(10):
             container.reload()
             if container.status == "running":

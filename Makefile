@@ -173,7 +173,7 @@ test-all: test test-moulinette
 setup-docker: check-docker
 	docker pull python:3.11-slim
 
-# Fix rootless-Docker lchown issue for SWE-bench tests.
+# Fix rootless-Docker lchown issue for SWE-bench tests (Linux VM only).
 #
 # Root cause: swebench's copy_to_container() creates a tar that embeds the
 # host user's UID/GID.  The Docker rootless daemon then tries to lchown the
@@ -182,13 +182,23 @@ setup-docker: check-docker
 #
 # Fix: extend the sub-UID/GID map to include the user's own UID/GID, then
 # restart the rootless daemon so the new mapping is active.
-# Requires sudo — run once per machine.
+# Requires sudo — run once per Linux VM.  No-op on macOS (Docker Desktop
+# handles namespacing internally).
 fix-docker-userns:
-	@USER=$$(id -un); UID_=$$(id -u); GID_=$$(id -g); \
+	@if [ "$$(uname)" = "Darwin" ]; then \
+		echo "macOS detected — Docker Desktop handles namespacing internally, nothing to do."; \
+		exit 0; \
+	fi; \
+	USER=$$(id -un); UID_=$$(id -u); GID_=$$(id -g); \
 	echo "Patching /etc/subuid and /etc/subgid for $$USER ($$UID_:$$GID_)..."; \
 	sudo sh -c "grep -qF '$$USER:$$UID_:1' /etc/subuid || echo '$$USER:$$UID_:1' >> /etc/subuid"; \
 	sudo sh -c "grep -qF '$$USER:$$GID_:1' /etc/subgid || echo '$$USER:$$GID_:1' >> /etc/subgid"; \
-	systemctl --user restart docker; \
+	echo "Restarting Docker daemon..."; \
+	if systemctl --user is-active --quiet docker 2>/dev/null; then \
+		systemctl --user restart docker && echo "Rootless Docker restarted."; \
+	else \
+		sudo systemctl restart docker && echo "System Docker restarted."; \
+	fi; \
 	echo "Done. SWE-bench eval tests should now pass."
 
 lint:
