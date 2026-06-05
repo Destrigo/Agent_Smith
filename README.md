@@ -273,7 +273,7 @@ uv run sandbox config/sandbox_template.json --mcp-stdio "python mcp_tools_sweben
 # Terminal 1:
 make mcp-mbpp
 # Terminal 2:
-uv run sandbox config/sandbox_template.json --mcp-server http://localhost:8000
+uv run sandbox config/sandbox_template.json --mcp-server http://localhost:8000/mcp
 ```
 
 ### MCP Servers (Standalone)
@@ -297,7 +297,7 @@ uv run python mcp_tools_mbpp.py
 
 ## 5. Exam Scripts (Evaluator)
 
-The evaluator uses three exam scripts located in `eval_documents/`. The Makefile wraps them for convenience:
+The evaluator uses exam scripts located in `eval_documents/`. The Makefile wraps them for convenience:
 
 ```bash
 # Run MBPP exam (requires Docker)
@@ -308,6 +308,9 @@ make exam-swebench
 
 # Run sandbox exam
 make exam-sandbox
+
+# Run anti-cheat checks
+make exam-anticheat
 ```
 
 Each `make exam-*` target calls the corresponding shell script:
@@ -332,7 +335,7 @@ Each `make exam-*` target calls the corresponding shell script:
 
 The exam scripts internally:
 1. Use `moulinette_eval dump` to fetch a task from the benchmark dataset
-2. Call `uv run python -m agent_mbpp` / `uv run python -m agent_swebench` with the default model
+2. Call `uv run agent-mbpp` / `uv run agent-swebench` with the default model
 3. Pass the solution to `moulinette_eval validate` for scoring
 
 ---
@@ -400,7 +403,6 @@ agent_smith/
 │   │   └── providers.py            # Provider registry (Mistral, OpenRouter, …)
 │   ├── parsing/
 │   │   └── code_extractor.py       # Extracts code blocks from LLM responses
-│   ├── metrics/                    # Per-step token / timing metrics
 │   └── prompts/
 │       ├── mbpp_prompt.txt         # System prompt for MBPP agent
 │       └── swebench_prompt.txt     # System prompt for SWE-bench agent
@@ -451,7 +453,8 @@ agent_smith/
 ├── eval_documents/                 # Exam scripts (used by the evaluator)
 │   ├── exam_mbpp.sh
 │   ├── exam_swebench.sh
-│   └── exam_sandbox.sh
+│   ├── exam_sandbox.sh
+│   └── exam_anticheat.sh
 │
 ├── scripts/                        # Benchmark sweep scripts
 │   ├── bench_mbpp.sh               # Run MBPP across N tasks
@@ -515,8 +518,8 @@ make mbpp MODEL=mistral-large-latest
 make swebench MODEL="openai/gpt-oss-120b:free" \
               URL="https://openrouter.ai/api/v1" \
               PROVIDER=openrouter \
-              TASK=/tmp/my_task.json \
-              OUT=/tmp/my_solution.json
+              SWE_TASK=/tmp/my_task.json \
+              SWE_OUT=/tmp/my_solution.json
 ```
 
 | Variable | Default | Description |
@@ -528,8 +531,6 @@ make swebench MODEL="openai/gpt-oss-120b:free" \
 | `MBPP_OUT` | `/tmp/mbpp-solution.json` | MBPP output solution file path |
 | `SWE_TASK` | `/tmp/swe-task.json` | SWE-bench input task file path |
 | `SWE_OUT` | `/tmp/swe-solution.json` | SWE-bench output solution file path |
-| `TASK` | `/tmp/mbpp-task.json` | Legacy alias for `MBPP_TASK` (used by `mbpp`/`swebench` targets) |
-| `OUT` | `/tmp/mbpp-solution.json` | Legacy alias for `MBPP_OUT` |
 
 ### Sandbox Configuration (`config/sandbox_template.json`)
 
@@ -638,7 +639,7 @@ The sandbox always returns an `observation` string describing execution outcome:
 | `[SANDBOX ERROR]` | No code block found / syntax error / blocked import |
 | `[SANDBOX TIMEOUT]` | Time limit exceeded (partial stdout included) |
 | `[SANDBOX MEMORY LIMIT]` | Memory limit exceeded |
-| `[SANDBOX TRUNCATED]` | stdout > 8,000 bytes (first portion shown) |
+| `[SANDBOX TRUNCATED]` | stdout > 8,192 bytes (first portion shown) |
 | *(normal)* | stdout + stderr concatenated |
 
 ### MCP Transport Choice

@@ -4,7 +4,7 @@ unexport VIRTUAL_ENV
 .PHONY: install check-docker sandbox sandbox-mbpp sandbox-swebench \
         dump-mbpp dump-swebench \
         mbpp swebench run-mbpp run-swebench \
-        exam-mbpp exam-swebench exam-sandbox \
+        exam-mbpp exam-swebench exam-sandbox exam-anticheat \
         bench-mbpp bench-swebench bench-all bench-extra \
         validate-mbpp validate-swebench \
         test test-eval test-moulinette test-all \
@@ -94,6 +94,10 @@ exam-sandbox: check-docker
 		--student-path . \
 		--moulinette-path ./moulinette \
 		--env-file .env
+
+exam-anticheat:
+	./eval_documents/exam_anticheat.sh \
+		--student-path .
 
 # ── full benchmark sweep ─────────────────────────────────────────────────────
 # N=0 → all 257 tasks   N=20 → first 20   N=20 SHUFFLE=1 → 20 random
@@ -264,6 +268,7 @@ help:
 	@echo "  fix-docker-userns fix rootless-Docker lchown error for SWE-bench tests"
 	@echo "                   (requires sudo, run once per machine)"
 	@echo ""
+	@echo "  exam-anticheat   run anti-cheat checks on student code"
 	@echo "  lint             flake8 + mypy (excludes moulinette, eval_documents)"
 	@echo "  lint-strict      flake8 + mypy --strict"
 	@echo "  mcp-mbpp         start MBPP MCP server on port 8000"
