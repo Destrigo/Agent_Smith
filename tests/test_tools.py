@@ -50,12 +50,12 @@ def _git_init(repo: Path) -> None:
                        capture_output=True)
 
 
-def _git_commit_all(repo: Path, message: str = "init") -> None:
+def _git_commit_all(repo: Path, msg: str = "init") -> None:
     """Stage every file and create a commit."""
     env = {**os.environ, "GIT_CONFIG_NOSYSTEM": "1", "HOME": str(repo)}
     subprocess.run(["git", "add", "."], cwd=repo, env=env, check=True,
                    capture_output=True)
-    subprocess.run(["git", "commit", "-m", message], cwd=repo, env=env,
+    subprocess.run(["git", "commit", "-m", msg], cwd=repo, env=env,
                    check=True, capture_output=True)
 
 

@@ -71,7 +71,7 @@ def openai_compatible_call(request: LLMRequest,
 
 def _openrouter(request: LLMRequest) -> LLMResponse:
     return openai_compatible_call(
-        request, headers={"HTTP-Referer": "https://github.com/agent-smith"})
+        request, headers={"HTTP-Referer": "https://agent-smith.42.fr"})
 
 
 def _gemini(request: LLMRequest) -> LLMResponse:
