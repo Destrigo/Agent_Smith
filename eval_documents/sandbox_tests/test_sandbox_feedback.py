@@ -42,13 +42,14 @@ print(f"  Message: {MALFORMED_MSG[:60]}...")
 print("FEEDBACK_TEST_3: Timeout feedback covered by test_timeout.py")
 
 # ── Case 4: Output truncation ─────────────────────────────────────────────────
-# Trigger real truncation: print more than _MAX_OUTPUT_BYTES (8192) bytes.
-# The sandbox will append [SANDBOX TRUNCATED] to the output automatically.
-BIG = "x" * 9000   # 9 KB — exceeds the 8 KB limit
-print(BIG)
-# The line above triggers the truncation path; the sandbox will add:
-#   [SANDBOX TRUNCATED] Output exceeded 8192 bytes …
-print("FEEDBACK_TEST_4: Truncation triggered by 9 KB output above")
-
+# Print the COMPLETE marker BEFORE triggering truncation so the exam script
+# can find it even after the output is cut (same pattern as test_timeout.py).
+print("FEEDBACK_TEST_4: Truncation triggered by 9 KB output below")
 print()
 print("=== SANDBOX FEEDBACK COMPLETE ===")
+
+# Now trigger real truncation: print more than _MAX_OUTPUT_BYTES (8192) bytes.
+# The sandbox will append [SANDBOX TRUNCATED] to the output — demonstrating
+# that the mechanism works. This must come AFTER the COMPLETE marker.
+BIG = "x" * 9000   # 9 KB — exceeds the 8 KB limit
+print(BIG)
