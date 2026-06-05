@@ -412,6 +412,27 @@ class Sandbox:
 
         # Timeout check
         if thread.is_alive():
+            # Inject TimeoutError into the thread so bare-except loops can be
+            # interrupted (layer 0.5). Without this, a `except: pass` loop
+            # would run forever since thread.join() never raises in the thread.
+            try:
+                import ctypes as _ctypes
+                _ctypes.pythonapi.PyThreadState_SetAsyncExc(
+                    _ctypes.c_ulong(thread.ident),
+                    _ctypes.py_object(TimeoutError),
+                )
+                thread.join(timeout=3)
+            except Exception:
+                pass
+
+            # Collect any additional output produced after the injection.
+            raw_stdout = stdout_buf.getvalue()
+            raw_stderr = stderr_buf.getvalue()
+            stdout, stdout_cut = _truncate(raw_stdout, _MAX_OUTPUT_BYTES)
+            stderr, stderr_cut = _truncate(raw_stderr, _MAX_OUTPUT_BYTES)
+            outcome["stdout"] = stdout
+            outcome["stderr"] = stderr
+
             # ns_snapshot may be partially written by the still-running thread;
             # discard it so self._namespace stays in the last known-good state.
             partial = stdout or stderr or "(no output captured)"
