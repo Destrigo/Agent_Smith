@@ -31,7 +31,16 @@ class MCPClient:
         )
 
     def connect_http(self, url: str) -> None:
-        """Connect to an MCP server via streamable-HTTP at *url*."""
+        """Connect to an MCP server via streamable-HTTP at *url*.
+
+        FastMCP's streamable-HTTP transport mounts at /mcp by default.
+        If *url* has no path (or just "/"), /mcp is appended automatically
+        so that both http://localhost:8000 and http://localhost:8000/mcp work.
+        """
+        from urllib.parse import urlparse, urlunparse
+        parsed = urlparse(url)
+        if parsed.path in ("", "/"):
+            url = urlunparse(parsed._replace(path="/mcp"))
         self._loop.run_until_complete(self._connect_http(url))
 
     # Async connect internals

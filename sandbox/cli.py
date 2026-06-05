@@ -4,7 +4,7 @@ sandbox CLI entry point.
     uv run sandbox                            interactive REPL, default config
     uv run sandbox sandbox_template.json      load config from file
     uv run sandbox cfg.json --mcp-stdio "python mcp_tools_mbpp.py"
-    uv run sandbox cfg.json --mcp-server http://localhost:8000
+    uv run sandbox cfg.json --mcp-server http://localhost:8000/mcp
 """
 
 import argparse
