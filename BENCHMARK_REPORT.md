@@ -91,7 +91,7 @@ Iteration and token columns are **per-task averages** across the 6 pool tasks.
 | `sympy__sympy-18189` | 5/9 | 7.6 | 15.0 | 36.4 | 63,793 |
 | `scikit-learn__scikit-learn-13439` | 4/9 | 11.5 | 17.6 | 188.4 | 135,006 |
 | `sympy__sympy-14711` | 2/9 | 6.0 | 17.9 | 197.2 | 162,998 |
-| `django__django-16082` *(extra 1)* | 1/9 | — | — | — | — |
+| `django__django-16082` *(extra 1)* | 1/11 | — | — | — | — |
 | `django__django-13406` *(extra 2)* | 4/9 | 17.2 | 17.0 | — | — |
 
 ### 2.4 `django__django-13406` — running details (extra 2, all 9 models)
@@ -125,7 +125,7 @@ Only model to pass all 8 tasks. Data from the canonical run (`2026-05-31`).
 | `sympy__sympy-14711` | ✓ | 7 | 31,683 | 1,177 | 24.2 | 2,946 | 13 | 1 | — | — |
 | `scikit-learn__scikit-learn-13439` | ✓ | 7 | 37,901 | 994 | 21.2 | 2,159 | 21 | 1 | 6 | **1** |
 | `django__django-16082` *(extra 1)* | ✓ | 15 | 167,078 | 2,346 | 56.7 | 3,418 | 12 | — | — | — |
-| `django__django-13406` *(extra 2)* | ✓ | 24 | 228,286 | 3,891 | 104.9 | 3,968 | — | — | — | — |
+| `django__django-13406` *(extra 2)* | ✓ | 24 | 228,286 | 3,677 | 104.9 | 3,968 | — | — | — | — |
 | **Average (pool)** | **6/6** | **5.5** | **28,754** | **925** | **19.1** | **2,957** | **14** | **1.0** | | |
 
 **Column definitions:**
@@ -150,7 +150,8 @@ Only model to pass all 8 tasks. Data from the canonical run (`2026-05-31`).
 
 Pool-task results for the 5 models whose per-run totals match the `bench_all` moulinette scores are read directly from the canonical evaluation runs. Results for the remaining 4 models (`ministral-8b`, `codestral`, `gpt-oss-120b`, `ministral-3b`) are inferred from the verified per-model totals (section 2.2) and section 2.3 aggregate counts, subject to a known ±2-count inconsistency in section 2.3 (the `solution.json` `success` flag records *agent submission*, not moulinette outcome, for pool tasks). Extra-task results are taken directly from section 2.2 and section 2.4.
 
-**Legend:** ✓ pass · ✗ fail · — not run
+**Legend:** ✓ pass · ✗ fail · — not run  
+¹ All 11 models ran pool tasks and extra-1. ² Only 9 models ran extra-2 (`mistral-tiny-latest` and `open-mistral-nemo` excluded).
 
 | Model | dj‑11066 | xarray‑4629 | sklearn‑13439 | sy‑13480 | sy‑14711 | sy‑18189 | dj‑16082 | dj‑13406 | **Total** |
 |-------|:--------:|:-----------:|:-------------:|:--------:|:--------:|:--------:|:--------:|:--------:|:---------:|
@@ -165,7 +166,7 @@ Pool-task results for the 5 models whose per-run totals match the `bench_all` mo
 | `ministral-3b-latest` | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | **1/8** |
 | `mistral-tiny-latest` | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | — | **0/7** |
 | `open-mistral-nemo` | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | — | **0/7** |
-| **Pass / 11** | 6 | 7 | 4 | 7 | 2 | 4 | 1 | 4 | — |
+| **Pass / 11¹** | 6 | 7 | 4 | 7 | 2 | 4 | 1 | 4² | — |
 
 **Key observations:**
 - `sympy__sympy-14711` is the hardest task: only 2 models pass (medium and large). It involves physics vector printing across deeply nested SymPy internals.
@@ -223,7 +224,7 @@ For each passed SWE task, we identify the iteration step at which the agent firs
 | `codestral-latest` | 3.8 | 2 | 7 | 3 |
 | `devstral-medium-latest` | 3.6 | 2 | 7 | 3 |
 | `devstral-latest` | 4.2 | 2 | 8 | 2 |
-| **Overall average** | **3.4** | 1 | 8 | 28 |
+| **Overall average** | **3.4** | 1 | 8 | 30 |
 
 **Insight:** Models that succeed locate and write to the correct file within the first 3–4 steps. A high first-edit step strongly correlates with failure — the agent is exploring irrelevant code paths.
 
@@ -260,8 +261,8 @@ For tasks where a test-pass signal was detected in `sandbox_output`, we measure 
 
 | Outcome | n | Avg Iterations | Ratio |
 |---------|---|----------------|-------|
-| Passed | 32 | **9.47** | 1× |
-| Failed | 22 | 18.68 | **1.97×** |
+| Passed | 30 | **9.47** | 1× |
+| Failed | 24 | 18.68 | **1.97×** |
 
 **Insight:** Failed tasks consume nearly twice as many iterations without reaching the solution. A hard iteration cap at 12 would cut wasted compute on doomed runs by an estimated 35% while sacrificing fewer than 5% of successes (which almost all land under 12 iterations).
 
@@ -273,7 +274,7 @@ For tasks where a test-pass signal was detected in `sandbox_output`, we measure 
 
 We compare SWE-bench performance and efficiency across the Mistral parameter ladder, holding provider, prompt, and agent code constant.
 
-| Model | Scale | MBPP | SWE pass | Avg Iter | In Tok / task |
+| Model | Scale | MBPP | SWE pool (6) | Avg Iter | In Tok / task |
 |-------|-------|------|----------|----------|---------------|
 | `mistral-tiny-latest` | <1B | 4% | 0/6 (0%) | — | — |
 | `open-mistral-nemo` | ~7B | 6% | 0/6 (0%) | — | — |
@@ -303,8 +304,8 @@ nemo  (~7B) │ 0%
 
 | Model | Specialisation | MBPP | SWE (6 tasks) | SWE extra |
 |-------|---------------|------|---------------|-----------|
-| `codestral-latest` | Code | 88% | 3/6 (50%) | FAIL |
-| `mistral-large-latest` | General | **91%** | **6/6 (100%)** | FAIL |
+| `codestral-latest` | Code | 88% | 3/6 (50%) | 0/2 (FAIL both) |
+| `mistral-large-latest` | General | **91%** | **6/6 (100%)** | 1/2 (extra-2 ✓) |
 
 **Finding:** The general-purpose model outperforms the code specialist on both benchmarks. On SWE-bench the gap is stark (50% vs 100%). SWE-bench rewards multi-step reasoning and codebase exploration — skills dependent on broad reasoning, not just code-generation quality. Code specialisation appears to hurt here, possibly by over-narrowing the model's exploration strategy.
 
@@ -330,11 +331,11 @@ nemo  (~7B) │ 0%
 | Tier | Recommendation | Justification |
 |------|---------------|---------------|
 | **Primary** | `mistral-medium-latest` | 100% SWE (8/8 tasks), 90% MBPP, fastest avg task time (19 s), 0 retries, lowest token cost per success |
-| **Fallback** | `mistral-large-latest` | Same SWE accuracy, +1% MBPP, but 3× slower and rate-limited |
-| **Budget** | `ministral-8b-latest` | 67% SWE, 84% MBPP, fast and reliable; best sub-70B option |
+| **Fallback** | `mistral-large-latest` | Same pool accuracy (6/6), 7/8 overall (fails extra-1), +1% MBPP, but 3× slower and rate-limited |
+| **Budget** | `ministral-8b-latest` | 5/8 SWE (67% pool, 63% overall), 84% MBPP, fast and reliable; best sub-70B option |
 | **Discard** | `ministral-3b-latest` | 17% SWE, 42% MBPP — below the minimum useful threshold |
 | **Discard** | `devstral-latest` / `devstral-medium-latest` | Worse than general-purpose equivalents; higher iteration cost |
-| **Discard** | `openai/gpt-oss-120b:free` | Best MBPP (93%) but 33% SWE and 8× slower; free-tier cap makes it impractical |
+| **Discard** | `openai/gpt-oss-120b:free` | Best MBPP (93%) but 3/8 SWE (33% pool, 37.5% overall) and 8× slower; free-tier cap makes it impractical |
 
 ### Cost analysis
 
