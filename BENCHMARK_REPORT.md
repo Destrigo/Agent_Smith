@@ -138,7 +138,7 @@ Only model to pass all 8 tasks. Data from the canonical run (`2026-05-31`).
 - *Gap* — additional iterations after first test pass before `final_answer()`
 
 **Key observations:**
-- The model edits the correct file **at step 1 on every pool task** — it locates and patches in the same iteration, with no wasted exploration.
+- The model makes its first file edit **at step 1 on every pool task** (column = first write to *any* file). The first edit to the *target* file (the one in the final diff) occurs on average at step 2.8 — see section 4.1.
 - The 3 SymPy tasks resolve in 4 iterations under 19k tokens — minimal patches (13 lines), problem well-localised from the issue description.
 - `scikit-learn` is the most complex task: 21 patch lines, but the agent detected a passing test at step 6 and submitted immediately (gap = 1).
 - `django__django-16082` (extra) is an outlier: 15 iterations and 167k tokens — 6× the pool average. The ORM mixed-type problem requires broader context exploration across Django internals.
@@ -190,7 +190,7 @@ All Mistral models use `https://api.mistral.ai/v1`. The one OpenRouter model use
 
 | Model | Avg Req Time (ms) | Retry Steps | Notes |
 |-------|-------------------|-------------|-------|
-| `mistral-medium-latest` | **2,957** | 0 | Fastest; zero rate-limit hits |
+| `mistral-medium-latest` | **2,957** | 0 | Fastest task completion (19 s/task); zero rate-limit hits |
 | `codestral-latest` | 1,573 | 0 | Fastest raw latency; fewer tokens |
 | `devstral-latest` | 1,240 | 0 | Low latency; high iter count |
 | `ministral-3b-latest` | 2,212 | 0 | Reliable; too few successes |
@@ -249,7 +249,7 @@ For tasks where a test-pass signal was detected in `sandbox_output`, we measure 
 
 | Metric | Value |
 |--------|-------|
-| Tasks with detectable first_pass_step | 7 / 54 |
+| Tasks with detectable first_pass_step | 7 / 30 (passed) |
 | Avg step at first test pass | 9.9 |
 | Avg iterations after first pass | **3.6** |
 | Min gap | 1 |
@@ -343,7 +343,7 @@ All models evaluated exclusively on free-tier quotas at **$0 spend**.
 
 | Provider | Models | Free tier | Total requests | Wall clock | Cost |
 |----------|--------|-----------|----------------|------------|------|
-| Mistral | 9 | Unlimited (rate-limited) | ~2,841 | ~18 h | $0 |
+| Mistral | 10 | Unlimited (rate-limited) | ~2,841 | ~18 h | $0 |
 | OpenRouter | 1 | 50 req/day (free models) | ~333 | ~8 h | $0 |
 
 The `gpt-oss-120b` model required 495 minutes for MBPP alone due to the 50 req/day cap — a key free-tier tradeoff: larger open-source models on OpenRouter sacrifice throughput for zero cost.
