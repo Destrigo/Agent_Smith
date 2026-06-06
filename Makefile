@@ -213,12 +213,14 @@ lint:
 		--ignore-missing-imports \
 		--disallow-untyped-defs \
 		--check-untyped-defs \
+		--explicit-package-bases \
 		--exclude moulinette \
 		--exclude eval_documents
 
 lint-strict:
 	uv run flake8 .
 	uv run mypy . --strict \
+		--explicit-package-bases \
 		--exclude moulinette \
 		--exclude eval_documents
 
