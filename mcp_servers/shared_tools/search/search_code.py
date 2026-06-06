@@ -1,5 +1,6 @@
 import os
 import fnmatch
+from typing import cast
 
 from mcp_server import mcp_server as mcp
 from shared_tools._testbed import testbed
@@ -8,7 +9,7 @@ from shared_tools._docker import is_docker_mode, docker_search_code, docker_exec
 
 @mcp.tool()
 def search_code(pattern: str, file_pattern: str = "*.py",
-                directory: str = "") -> list:
+                directory: str = "") -> list[str]:
     """
     Search for *pattern* (fixed string, not regex) in all files matching
     *file_pattern* (filename glob, e.g. '*.py') under *directory*.
@@ -43,7 +44,7 @@ def search_code(pattern: str, file_pattern: str = "*.py",
     search_dir = directory or ("/testbed" if is_docker_mode() else testbed())
 
     if is_docker_mode():
-        return docker_search_code(pattern, search_dir, file_pattern)
+        return cast(list[str], docker_search_code(pattern, search_dir, file_pattern))
 
     results = []
     for root, _, files in os.walk(search_dir):

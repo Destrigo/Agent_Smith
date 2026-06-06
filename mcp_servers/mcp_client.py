@@ -10,7 +10,7 @@ plain Python callables that can be injected into the sandbox namespace.
 """
 
 import asyncio
-from typing import Any, Callable, Dict
+from typing import Any, Callable, Dict, Optional
 
 
 class MCPClient:
@@ -18,13 +18,13 @@ class MCPClient:
     def __init__(self) -> None:
         self._tools: Dict[str, dict] = {}
         self._loop: asyncio.AbstractEventLoop = asyncio.new_event_loop()
-        self._session = None
+        self._session: Any = None
         # Keep context-manager objects alive for the session lifetime.
-        self._transport_ctx = None
-        self._session_ctx = None
+        self._transport_ctx: Any = None
+        self._session_ctx: Any = None
 
     # Public connect API (sync wrappers)
-    def connect_stdio(self, command: str, args: list = None) -> None:
+    def connect_stdio(self, command: str, args: Optional[list] = None) -> None:
         """Launch *command* as a subprocess and connect via stdio transport."""
         self._loop.run_until_complete(
             self._connect_stdio(command, args or [])
@@ -155,7 +155,7 @@ class MCPClient:
 
     # Cleanup
     def close(self) -> None:
-        async def _close():
+        async def _close() -> None:
             if self._session_ctx is not None:
                 await self._session_ctx.__aexit__(None, None, None)
             if self._transport_ctx is not None:

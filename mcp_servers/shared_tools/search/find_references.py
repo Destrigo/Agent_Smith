@@ -10,7 +10,7 @@ _MAX_RESULTS = 200
 
 
 @mcp.tool()
-def find_references(name: str, filepath: str = "", line: int = 0):
+def find_references(name: str, filepath: str = "", line: int = 0) -> list[str]:
     if is_docker_mode():
         cmd = (
             f"grep -rn --include='*.py' -E "

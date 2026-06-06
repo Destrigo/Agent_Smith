@@ -15,7 +15,7 @@ def get_patch() -> str:
         )
         if result["exit_code"] != 0:
             return f"(no changes or git error: {result['stderr'].strip()})"
-        return result["stdout"]
+        return str(result["stdout"])
 
     result = subprocess.run(
         ["git", "-c", "core.fileMode=false", "diff"],
@@ -25,4 +25,4 @@ def get_patch() -> str:
     )
     if result.returncode != 0:
         return f"(no changes or git error: {result.stderr.strip()})"
-    return result.stdout
+    return str(result.stdout)

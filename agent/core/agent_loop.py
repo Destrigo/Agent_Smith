@@ -1,6 +1,6 @@
 import logging
 import time
-from typing import Optional
+from typing import Any, Literal, Optional
 from models.agent_state import AgentState
 from models.llm import Message, LLMRequest, LLMResponse
 from models.solution import SolutionOutput, StepMetrics
@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 class AgentLoop:
-    def __init__(self, llm_manager: LLMManager, sandbox_client,
+    def __init__(self, llm_manager: LLMManager, sandbox_client: Any,
                  system_prompt: str, max_iterations: int = 10,
                  max_input_tokens: int = 6000,
                  max_output_tokens: int = 1500,
@@ -54,8 +54,8 @@ class AgentLoop:
             memory_usage_mb=raw.get("memory_usage_mb", 0.0),
             final_answer=raw.get("final_answer"))
 
-    def run(self, task_id: str, benchmark: str, user_message: str
-            ) -> SolutionOutput:
+    def run(self, task_id: str, benchmark: Literal["mbpp", "swebench"],
+            user_message: str) -> SolutionOutput:
         state = AgentState(task_id=task_id, benchmark=benchmark,
                            max_iterations=self.max_iterations,
                            max_input_tokens=self.max_input_tokens,

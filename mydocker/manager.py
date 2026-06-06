@@ -1,6 +1,6 @@
 import logging
 import time
-from typing import Optional
+from typing import Any, Optional
 
 from mcp_servers.shared_tools._docker import _write_file_to_container
 
@@ -17,7 +17,7 @@ class DockerManager:
             raise RuntimeError(
                 "Docker SDK not available or Docker daemon not running."
                 f"Install with: uv add docker\nError: {exc}")
-        self._container = None
+        self._container: Any = None
         self._container_id: Optional[str] = None
 
     def _pull_image(self, image: str) -> None:
@@ -39,7 +39,7 @@ class DockerManager:
                 ) from exc
             logger.info("Image pulled: %s", image)
 
-    def _start_container(self, image: str):
+    def _start_container(self, image: str) -> Any:
         import docker.errors
         kwargs: dict = dict(
             command=[],  # clear image CMD so it isn't appended to our entrypoint
@@ -99,9 +99,9 @@ class DockerManager:
     def start(self, image: str, eval_script: str) -> str:
         self._pull_image(image)
         self._container = self._start_container(image)
-        self._container_id = self._container.id
+        self._container_id = str(self._container.id)
         self._inject_eval_script(eval_script)
-        logger.info("Container started: %s", self._container_id[:12])
+        logger.info("Container started: %s", (self._container_id or "")[:12])
         return self._container_id
 
     def cleanup(self) -> None:
@@ -109,19 +109,19 @@ class DockerManager:
             return
         try:
             self._container.stop(timeout=5)
-            logger.info("Container stopped: %s", self._container_id[:12])
+            logger.info("Container stopped: %s", (self._container_id or "")[:12])
         except Exception:
             pass
         try:
             self._container.remove(force=True)
-            logger.info("Container removed: %s", self._container_id[:12])
+            logger.info("Container removed: %s", (self._container_id or "")[:12])
         except Exception:
             pass
         self._container = None
         self._container_id = None
 
-    def __enter__(self):
+    def __enter__(self) -> "DockerManager":
         return self
 
-    def __exit__(self, *args):
+    def __exit__(self, *args: Any) -> None:
         self.cleanup()

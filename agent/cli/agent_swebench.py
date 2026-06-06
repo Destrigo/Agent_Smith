@@ -4,6 +4,7 @@ import signal
 import sys
 import os
 from pathlib import Path
+from typing import Any
 from dotenv import load_dotenv
 from models.task import SWEBenchTaskInput
 from models.solution import SolutionOutput
@@ -33,7 +34,7 @@ def build_task_message(task: SWEBenchTaskInput) -> str:
     return msg
 
 
-def _build_system_prompt(sandbox) -> str:
+def _build_system_prompt(sandbox: Any) -> str:
     manual = ""
     if hasattr(sandbox, "get_manual"):
         try:
@@ -48,7 +49,8 @@ def _build_system_prompt(sandbox) -> str:
 
 
 def _make_sandbox_client(container_id: str, task: SWEBenchTaskInput,
-                         docker_mgr: DockerManager, eval_script_path: str):
+                         docker_mgr: DockerManager, eval_script_path: str
+                         ) -> Any:
     """Connect the real sandbox with SWE-bench MCP tools bridging into Docker."""
     os.environ["SANDBOX_EVAL_SCRIPT"] = eval_script_path
     os.environ["DOCKER_CONTAINER_ID"] = container_id
@@ -63,7 +65,7 @@ def _make_sandbox_client(container_id: str, task: SWEBenchTaskInput,
     mcp_client = MCPClient()
     mcp_client.connect_stdio("python", [mcp_script])
     sandbox.register_mcp_tools(mcp_client.make_tool_wrappers())
-    sandbox._mcp_client = mcp_client  # keep subprocess alive
+    setattr(sandbox, "_mcp_client", mcp_client)  # keep subprocess alive
     return sandbox
 
 
@@ -91,7 +93,7 @@ def main() -> None:
     logger.info("Loaded SWE-bench task: %s", task.instance_id)
     docker_mgr = DockerManager()
 
-    def _cleanup(sig=None, frame=None):
+    def _cleanup(sig: Any = None, frame: Any = None) -> None:
         logger.info("Signal %s - cleaning up Docker container...", sig)
         docker_mgr.cleanup()
         sys.exit(0)

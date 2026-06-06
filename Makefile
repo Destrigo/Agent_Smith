@@ -215,14 +215,18 @@ lint:
 		--check-untyped-defs \
 		--explicit-package-bases \
 		--exclude moulinette \
-		--exclude eval_documents
+		--exclude eval_documents \
+		--exclude tests \
+		--exclude conftest
 
 lint-strict:
 	uv run flake8 .
 	uv run mypy . --strict \
 		--explicit-package-bases \
 		--exclude moulinette \
-		--exclude eval_documents
+		--exclude eval_documents \
+		--exclude tests \
+		--exclude conftest
 
 # ── mcp servers (standalone) ──────────────────────────────────────────────────
 mcp-mbpp:

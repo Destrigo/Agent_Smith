@@ -8,14 +8,14 @@ filesystem.  When it is not set, callers fall back to the local path.
 import io
 import os
 import tarfile as _tarfile
-from typing import Optional
+from typing import Any, Optional
 
 
 def _container_id() -> Optional[str]:
     return os.environ.get("DOCKER_CONTAINER_ID")
 
 
-def _get_container():
+def _get_container() -> Any:
     import docker
     cid = _container_id()
     client = docker.from_env()
@@ -32,12 +32,12 @@ def docker_read_file(filepath: str) -> str:
             f"Cannot read {filepath} from container: "
             f"{output.decode('utf-8', errors='replace')}"
         )
-    return output.decode("utf-8", errors="replace")
+    return str(output.decode("utf-8", errors="replace"))
 
 
 # ── write ─────────────────────────────────────────────────────────────────────
 
-def _write_file_to_container(container, filepath: str, content: str) -> None:
+def _write_file_to_container(container: Any, filepath: str, content: str) -> None:
     """Low-level write: pack content into a tar and put_archive into container."""
     content_bytes = content.encode("utf-8")
     buf = io.BytesIO()
@@ -60,7 +60,7 @@ def docker_write_file(filepath: str, content: str) -> None:
 # ── exec ──────────────────────────────────────────────────────────────────────
 
 def docker_exec(command: str, workdir: str = "/testbed",
-                timeout: int = 30) -> dict:
+                timeout: int = 30) -> dict[str, Any]:
     """Run a shell command inside the container, return stdout/stderr/exit_code."""
     container = _get_container()
     result = container.exec_run(

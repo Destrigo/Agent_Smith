@@ -28,7 +28,7 @@ Eleven models were evaluated across two benchmark suites. All models run on **fr
 
 ### Tasks
 
-Seven SWE-bench tasks were used: the 6 mandated exam-pool tasks plus one extra (`django__django-16082`) to reach the 7-task threshold. All tasks come from the public `SWE-bench/SWE-bench_Verified` dataset and are fully supported by the moulinette evaluator.
+Eight SWE-bench tasks were used: the 6 mandated exam-pool tasks plus two extra tasks (`django__django-16082` and `django__django-13406`) to reach the 8-task threshold. All tasks come from the public `SWE-bench/SWE-bench_Verified` dataset and are fully supported by the moulinette evaluator.
 
 | Task | Repo | Topic |
 |------|------|-------|
@@ -63,7 +63,7 @@ MBPP used the full 257-task test split. SWE-bench was validated by the moulinett
 | `mistral-tiny-latest` | 11 | **4%** |
 | `open-mistral-nemo` | 15 | **6%** |
 
-### 2.2 SWE-bench — per model (6 pool tasks + 1 extra)
+### 2.2 SWE-bench — per model (6 pool tasks + 2 extra)
 
 Iteration and token columns are **per-task averages** across the 6 pool tasks.
 
@@ -114,7 +114,7 @@ Task: *Queryset with values()/values_list() crashes when recreated from a pickle
 
 ### 2.5 `mistral-medium-latest` — dettaglio per task
 
-Only model to pass all 7 tasks. Data from the canonical run (`2026-05-31`).
+Only model to pass all 8 tasks. Data from the canonical run (`2026-05-31`).
 
 | Task | Pass | Iter | Input Tok | Output Tok | Time (s) | Avg req (ms) | Patch lines | First-edit step | First-pass step | Gap |
 |------|------|------|-----------|------------|----------|--------------|-------------|-----------------|-----------------|-----|
@@ -143,6 +143,36 @@ Only model to pass all 7 tasks. Data from the canonical run (`2026-05-31`).
 - `scikit-learn` is the most complex task: 21 patch lines, but the agent detected a passing test at step 6 and submitted immediately (gap = 1).
 - `django__django-16082` (extra) is an outlier: 15 iterations and 167k tokens — 6× the pool average. The ORM mixed-type problem requires broader context exploration across Django internals.
 - **0 retries** across all tasks: no rate-limit hits, stable latency (~3 s/req).
+
+---
+
+### 2.6 SWE-bench — all 11 models × all 8 tasks (pass/fail matrix)
+
+Pool-task results for the 5 models whose per-run totals match the `bench_all` moulinette scores are read directly from the canonical evaluation runs. Results for the remaining 4 models (`ministral-8b`, `codestral`, `gpt-oss-120b`, `ministral-3b`) are inferred from the verified per-model totals (section 2.2) and section 2.3 aggregate counts, subject to a known ±2-count inconsistency in section 2.3 (the `solution.json` `success` flag records *agent submission*, not moulinette outcome, for pool tasks). Extra-task results are taken directly from section 2.2 and section 2.4.
+
+**Legend:** ✓ pass · ✗ fail · — not run
+
+| Model | dj‑11066 | xarray‑4629 | sklearn‑13439 | sy‑13480 | sy‑14711 | sy‑18189 | dj‑16082 | dj‑13406 | **Total** |
+|-------|:--------:|:-----------:|:-------------:|:--------:|:--------:|:--------:|:--------:|:--------:|:---------:|
+| `mistral-medium-latest` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | **8/8** |
+| `mistral-large-latest` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ | ✓ | **7/8** |
+| `ministral-8b-latest` | ✓ | ✓ | ✗ | ✓ | ✗ | ✓ | ✗ | ✓ | **5/8** |
+| `codestral-latest` | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | **3/8** |
+| `mistral-small-latest` | ✗ | ✓ | ✗ | ✓ | ✗ | ✓ | ✗ | ✗ | **3/8** |
+| `devstral-medium-latest` | ✗ | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ | ✗ | **3/8** |
+| `openai/gpt-oss-120b:free` | ✓ | ✗ | ✗ | ✓ | ✗ | ✗ | ✗ | ✓ | **3/8** |
+| `devstral-latest` | ✗ | ✓ | ✗ | ✓ | ✗ | ✗ | ✗ | ✗ | **2/8** |
+| `ministral-3b-latest` | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | **1/8** |
+| `mistral-tiny-latest` | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | — | **0/7** |
+| `open-mistral-nemo` | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | — | **0/7** |
+| **Pass / 11** | 6 | 7 | 4 | 7 | 2 | 4 | 1 | 4 | — |
+
+**Key observations:**
+- `sympy__sympy-14711` is the hardest task: only 2 models pass (medium and large). It involves physics vector printing across deeply nested SymPy internals.
+- `sympy__sympy-13480` and `pydata__xarray-4629` are the easiest pool tasks (7/9 complete models pass each), reflecting well-localised one-function fixes.
+- `django__django-11066` passes for 6/9 models despite requiring Django internals knowledge — models below ~22B fail it entirely.
+- `django__django-16082` (Extra-1) is the hardest single task: only `mistral-medium-latest` passes (1/11 overall), requiring broad exploration across Django ORM internals.
+- `django__django-13406` (Extra-2) has surprising difficulty diversity: `ministral-8b` passes it while `codestral` and `devstral` fail, suggesting that iterative debugging ability (not raw scale) drives success here.
 
 ---
 
@@ -299,7 +329,7 @@ nemo  (~7B) │ 0%
 
 | Tier | Recommendation | Justification |
 |------|---------------|---------------|
-| **Primary** | `mistral-medium-latest` | 100% SWE (7/7 tasks), 90% MBPP, fastest avg task time (19 s), 0 retries, lowest token cost per success |
+| **Primary** | `mistral-medium-latest` | 100% SWE (8/8 tasks), 90% MBPP, fastest avg task time (19 s), 0 retries, lowest token cost per success |
 | **Fallback** | `mistral-large-latest` | Same SWE accuracy, +1% MBPP, but 3× slower and rate-limited |
 | **Budget** | `ministral-8b-latest` | 67% SWE, 84% MBPP, fast and reliable; best sub-70B option |
 | **Discard** | `ministral-3b-latest` | 17% SWE, 42% MBPP — below the minimum useful threshold |

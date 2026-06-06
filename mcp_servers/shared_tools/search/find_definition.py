@@ -10,7 +10,7 @@ _MAX_RESULTS = 200
 
 
 @mcp.tool()
-def search_function_or_class_definition_in_code(name: str):
+def search_function_or_class_definition_in_code(name: str) -> list[str]:
     if is_docker_mode():
         cmd = (
             f"grep -rn --include='*.py' -E "

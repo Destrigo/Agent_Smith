@@ -31,7 +31,7 @@ def _read_multiline(prompt: str) -> str | None:
 
     # Interactive REPL mode: read until blank line or EOF
     print(prompt)
-    lines = []
+    lines: list[str] = []
     while True:
         try:
             line = input("... " if lines else ">>> ")

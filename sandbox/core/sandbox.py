@@ -178,7 +178,7 @@ class Sandbox:
         locals: Optional[dict] = None,
         fromlist: tuple = (),
         level: int = 0,
-    ):
+    ) -> Any:
         base = name.split(".")[0]
         if base in _BLOCKED_MODULES:
             raise ImportError(
@@ -193,7 +193,7 @@ class Sandbox:
             )
         return _builtins.__import__(name, globals, locals, fromlist, level)
 
-    def _restricted_open(self, path, mode="r", *args, **kwargs):
+    def _restricted_open(self, path: Any, mode: str = "r", *args: Any, **kwargs: Any) -> Any:
         abs_path = os.path.realpath(str(path))
         for allowed in self.config.allowed_directories:
             allowed_real = os.path.realpath(allowed)
@@ -296,7 +296,7 @@ class Sandbox:
         # output.  Injecting print() into the exec namespace avoids touching
         # the global sys.stdout entirely.
 
-        def _sandbox_print(*args, sep=" ", end="\n", file=None, flush=False):
+        def _sandbox_print(*args: Any, sep: str = " ", end: str = "\n", file: Any = None, flush: bool = False) -> None:
             import sys as _sys
             if file is None or file is _sys.stdout:
                 target = stdout_buf
@@ -418,7 +418,7 @@ class Sandbox:
             try:
                 import ctypes as _ctypes
                 _ctypes.pythonapi.PyThreadState_SetAsyncExc(
-                    _ctypes.c_ulong(thread.ident),
+                    _ctypes.c_ulong(thread.ident or 0),
                     _ctypes.py_object(TimeoutError),
                 )
                 thread.join(timeout=3)

@@ -2,6 +2,7 @@ import argparse
 import logging
 import sys
 from pathlib import Path
+from typing import Any
 import os
 from dotenv import load_dotenv
 from models.task import MBPPTaskInput
@@ -27,7 +28,7 @@ def build_task_message(task: MBPPTaskInput) -> str:
         "then final_answer() to submit.")
 
 
-def _build_system_prompt(sandbox) -> str:
+def _build_system_prompt(sandbox: Any) -> str:
     manual = ""
     if hasattr(sandbox, "get_manual"):
         try:
@@ -41,7 +42,7 @@ def _build_system_prompt(sandbox) -> str:
     return static_prompt
 
 
-def make_sandbox_client(task: MBPPTaskInput):
+def make_sandbox_client(task: MBPPTaskInput) -> Any:
     test_lines = list(task.test_imports) + list(task.test_list)
     os.environ["SANDBOX_TEST_CODE"] = "\n".join(test_lines)
     from sandbox.core.sandbox import Sandbox
@@ -53,7 +54,7 @@ def make_sandbox_client(task: MBPPTaskInput):
     mcp_client = MCPClient()
     mcp_client.connect_stdio("python", [mcp_script])
     sandbox.register_mcp_tools(mcp_client.make_tool_wrappers())
-    sandbox._mcp_client = mcp_client  # keep subprocess alive
+    setattr(sandbox, "_mcp_client", mcp_client)  # keep subprocess alive
     return sandbox
 
 
