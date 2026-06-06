@@ -67,11 +67,17 @@ class MCPClient:
         from mcp.client.streamable_http import streamable_http_client
 
         self._transport_ctx = streamable_http_client(url)
-        read_stream, write_stream, _ = await self._transport_ctx.__aenter__()
+        try:
+            read_stream, write_stream, _ = await self._transport_ctx.__aenter__()
 
-        self._session_ctx = ClientSession(read_stream, write_stream)
-        self._session = await self._session_ctx.__aenter__()
-        await self._session.initialize()
+            self._session_ctx = ClientSession(read_stream, write_stream)
+            self._session = await self._session_ctx.__aenter__()
+            await self._session.initialize()
+        except asyncio.CancelledError as exc:
+            raise ConnectionError(
+                f"MCP handshake with {url} was cancelled — "
+                "is the server running and does it speak the MCP streamable-HTTP protocol?"
+            ) from exc
 
         await self._load_tools()
 
