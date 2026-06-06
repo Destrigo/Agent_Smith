@@ -60,12 +60,12 @@ MBPP used the full 257-task test split. SWE-bench was validated by the moulinett
 | `devstral-medium-latest` | 221 | 86% |
 | `ministral-8b-latest` | 217 | 84% |
 | `ministral-3b-latest` | 109 | 42% |
-| `mistral-tiny-latest` | 11 | **4%** |
 | `open-mistral-nemo` | 15 | **6%** |
+| `mistral-tiny-latest` | 11 | **4%** |
 
 ### 2.2 SWE-bench — per model (6 pool tasks + 2 extra)
 
-Iteration and token columns are **per-task averages** across the 6 pool tasks.
+*Avg Iter* and *Avg Time* are per-task averages across the 6 pool tasks. *Total In Tok* and *Total Out Tok* are **cumulative totals** across all 6 pool tasks.
 
 | Model | Pool (6) | Extra-1 | Extra-2 | Total | Avg Iter | Total In Tok | Total Out Tok | Avg Time (s) |
 |-------|----------|---------|---------|-------|----------|--------------|---------------|--------------|
@@ -83,7 +83,7 @@ Iteration and token columns are **per-task averages** across the 6 pool tasks.
 
 ### 2.3 SWE-bench — per task (9 complete models)
 
-| Task | Pass / 9 | Avg Iter (pass) | Avg Iter (fail) | Avg Time (s) | Avg In Tok |
+| Task | Pass | Avg Iter (pass) | Avg Iter (fail) | Avg Time (s) | Avg In Tok |
 |------|----------|-----------------|-----------------|--------------|------------|
 | `pydata__xarray-4629` | 8/9 | 10.9 | 30.0 | 72.7 | 91,647 |
 | `sympy__sympy-13480` | 7/9 | 7.6 | 20.5 | 45.2 | 57,860 |
@@ -91,8 +91,8 @@ Iteration and token columns are **per-task averages** across the 6 pool tasks.
 | `sympy__sympy-18189` | 5/9 | 7.6 | 15.0 | 36.4 | 63,793 |
 | `scikit-learn__scikit-learn-13439` | 4/9 | 11.5 | 17.6 | 188.4 | 135,006 |
 | `sympy__sympy-14711` | 2/9 | 6.0 | 17.9 | 197.2 | 162,998 |
-| `django__django-16082` *(extra 1)* | 1/11 | — | — | — | — |
-| `django__django-13406` *(extra 2)* | 4/9 | 17.2 | 17.0 | — | — |
+| `django__django-16082` *(extra 1, N=11)* | 1/11 | — | — | — | — |
+| `django__django-13406` *(extra 2, N=9)* | 4/9 | 17.2 | 17.0 | — | — |
 
 ### 2.4 `django__django-13406` — running details (extra 2, all 9 models)
 
@@ -171,7 +171,7 @@ Pool-task results for the 5 models whose per-run totals match the `bench_all` mo
 **Key observations:**
 - `sympy__sympy-14711` is the hardest task: only 2 models pass (medium and large). It involves physics vector printing across deeply nested SymPy internals.
 - `sympy__sympy-13480` and `pydata__xarray-4629` are the easiest pool tasks (7/9 complete models pass each), reflecting well-localised one-function fixes.
-- `django__django-11066` passes for 6/9 models despite requiring Django internals knowledge — models below ~22B fail it entirely.
+- `django__django-11066` passes for 6/9 models. Notably `ministral-3b` (~3B) passes while `mistral-small` (~22B) fails — success correlates with patch locality, not purely model scale.
 - `django__django-16082` (Extra-1) is the hardest single task: only `mistral-medium-latest` passes (1/11 overall), requiring broad exploration across Django ORM internals.
 - `django__django-13406` (Extra-2) has surprising difficulty diversity: `ministral-8b` passes it while `codestral` and `devstral` fail, suggesting that iterative debugging ability (not raw scale) drives success here.
 
@@ -183,7 +183,7 @@ All Mistral models use `https://api.mistral.ai/v1`. The one OpenRouter model use
 
 | Provider | Models | Avg Req Time (ms) | Total Retry Steps | Availability |
 |----------|--------|-------------------|-------------------|--------------|
-| Mistral | 9 | ~3,600 | 40 | 98.6% |
+| Mistral | 10 | ~3,600 | 40 | 98.6% |
 | OpenRouter | 1 | ~8,757 | 0 | 100% |
 
 **Breakdown by model:**
