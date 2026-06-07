@@ -16,4 +16,7 @@ print("collections imported:", collections.Counter([1,1,2]))
 import itertools
 print("itertools imported:", list(itertools.islice(range(10), 3)))
 
+import typing
+print("typing imported:", typing.Optional[int])
+
 print("\n=== ALL ALLOWED IMPORTS OK ===")
