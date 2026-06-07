@@ -41,7 +41,7 @@ class DockerManager:
 
     def _start_container(self, image: str) -> Any:
         import docker.errors
-        kwargs: dict = dict(
+        kwargs: dict[str, Any] = dict(
             command=[],  # clear image CMD so it isn't appended to our entrypoint
             entrypoint=["tail", "-f", "/dev/null"],
             detach=True, remove=False,

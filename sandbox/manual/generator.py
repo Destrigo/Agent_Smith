@@ -20,7 +20,7 @@ Usage
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from mcp_servers.mcp_client import MCPClient
@@ -40,7 +40,7 @@ def generate_manual_from_client(client: "MCPClient") -> str:
     return generate_manual_from_schemas(client.discover_tools())
 
 
-def generate_manual_from_schemas(schemas: dict) -> str:
+def generate_manual_from_schemas(schemas: dict[str, Any]) -> str:
     """
     Build the manual from a dict of {tool_name: schema_dict}.
 

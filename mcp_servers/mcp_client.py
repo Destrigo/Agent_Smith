@@ -16,7 +16,7 @@ from typing import Any, Callable, Dict, Optional
 class MCPClient:
 
     def __init__(self) -> None:
-        self._tools: Dict[str, dict] = {}
+        self._tools: Dict[str, dict[str, Any]] = {}
         self._loop: asyncio.AbstractEventLoop = asyncio.new_event_loop()
         self._session: Any = None
         # Keep context-manager objects alive for the session lifetime.
@@ -24,7 +24,7 @@ class MCPClient:
         self._session_ctx: Any = None
 
     # Public connect API (sync wrappers)
-    def connect_stdio(self, command: str, args: Optional[list] = None) -> None:
+    def connect_stdio(self, command: str, args: Optional[list[str]] = None) -> None:
         """Launch *command* as a subprocess and connect via stdio transport."""
         self._loop.run_until_complete(
             self._connect_stdio(command, args or [])
@@ -44,7 +44,7 @@ class MCPClient:
         self._loop.run_until_complete(self._connect_http(url))
 
     # Async connect internals
-    async def _connect_stdio(self, command: str, args: list) -> None:
+    async def _connect_stdio(self, command: str, args: list[str]) -> None:
         import os
         from mcp import ClientSession, StdioServerParameters
         from mcp.client.stdio import stdio_client
@@ -91,21 +91,21 @@ class MCPClient:
             }
 
     # Tool discovery
-    def discover_tools(self) -> Dict[str, dict]:
+    def discover_tools(self) -> Dict[str, dict[str, Any]]:
         """Return the schema dict for all discovered tools."""
         return dict(self._tools)
 
-    def make_tool_wrappers(self) -> Dict[str, Callable]:
+    def make_tool_wrappers(self) -> Dict[str, Callable[..., Any]]:
         """
         Return a dict of {name: callable} for every discovered tool.
 
         Each callable has the tool's description as its docstring and accepts
         keyword arguments that are forwarded to the MCP server.
         """
-        wrappers: Dict[str, Callable] = {}
+        wrappers: Dict[str, Callable[..., Any]] = {}
         for name, schema in self._tools.items():
             def _make(tool_name: str, doc: str,
-                      input_schema: dict) -> Callable:
+                      input_schema: dict[str, Any]) -> Callable[..., Any]:
                 # Build ordered list of parameter names from the JSON schema
                 # so positional calls like run_tests(code) work correctly.
                 props = input_schema.get("properties", {})
@@ -141,7 +141,7 @@ class MCPClient:
             self._call_tool_async(tool_name, kwargs)
         )
 
-    async def _call_tool_async(self, tool_name: str, arguments: dict) -> Any:
+    async def _call_tool_async(self, tool_name: str, arguments: dict[str, Any]) -> Any:
         result = await self._session.call_tool(tool_name, arguments=arguments)
         if not result.content:
             return None

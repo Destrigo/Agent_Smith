@@ -14,7 +14,7 @@ class TransientError(Exception):
 
 
 def _post(url: str, payload: dict[str, Any], api_key: str,
-          headers: dict[str, str] | None = None) -> tuple[dict, float]:
+          headers: dict[str, str] | None = None) -> tuple[dict[str, Any], float]:
     t0 = time.monotonic()
     base_headers = {"Authorization": f"Bearer {api_key}",
                     "Content-Type": "application/json"}
@@ -31,7 +31,7 @@ def _post(url: str, payload: dict[str, Any], api_key: str,
     return resp.json(), elapsed_ms
 
 
-def _parse_response(data: dict, elapsed_ms: float, api_url: str
+def _parse_response(data: dict[str, Any], elapsed_ms: float, api_url: str
                     ) -> LLMResponse:
     raw_content = data.get("choices", [{}])[0].get("message", {}).get(
         "content", "")

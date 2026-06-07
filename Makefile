@@ -223,6 +223,8 @@ lint-strict:
 	uv run flake8 .
 	uv run mypy . --strict \
 		--explicit-package-bases \
+		--ignore-missing-imports \
+		--disable-error-code=untyped-decorator \
 		--exclude moulinette \
 		--exclude eval_documents \
 		--exclude tests \

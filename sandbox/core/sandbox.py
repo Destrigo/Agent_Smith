@@ -29,7 +29,7 @@ class FinalAnswerSignal(Exception):
 
 
 # Modules that must never be importable regardless of the allowlist.
-_BLOCKED_MODULES: frozenset = frozenset({
+_BLOCKED_MODULES: frozenset[str] = frozenset({
     "os",
     "sys",
     "subprocess",
@@ -65,7 +65,7 @@ _BLOCKED_MODULES: frozenset = frozenset({
 })
 
 # Builtins that are always removed from the sandbox namespace.
-_BLOCKED_BUILTINS: frozenset = frozenset({
+_BLOCKED_BUILTINS: frozenset[str] = frozenset({
     "eval",
     "exec",
     "compile",
@@ -153,7 +153,7 @@ class Sandbox:
     def _final_answer_fn(self, answer: str) -> None:
         raise FinalAnswerSignal(str(answer))
 
-    def _make_safe_builtins(self) -> dict:
+    def _make_safe_builtins(self) -> dict[str, Any]:
         safe = {
             k: v for k, v in vars(_builtins).items()
             if k not in _BLOCKED_BUILTINS
@@ -174,9 +174,9 @@ class Sandbox:
     def _restricted_import(
         self,
         name: str,
-        globals: Optional[dict] = None,
-        locals: Optional[dict] = None,
-        fromlist: tuple = (),
+        globals: Optional[dict[str, Any]] = None,
+        locals: Optional[dict[str, Any]] = None,
+        fromlist: tuple[str, ...] = (),
         level: int = 0,
     ) -> Any:
         base = name.split(".")[0]
@@ -212,7 +212,7 @@ class Sandbox:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def no_code_feedback() -> dict:
+    def no_code_feedback() -> dict[str, Any]:
         """
         Return the observation dict when the LLM response had no code block.
         The agent loop should call this instead of execute() and feed the
@@ -254,7 +254,7 @@ class Sandbox:
     # Core execution
     # ------------------------------------------------------------------
 
-    def execute(self, code: str) -> dict:
+    def execute(self, code: str) -> dict[str, Any]:
         """
         Execute *code* inside the sandbox.
 
