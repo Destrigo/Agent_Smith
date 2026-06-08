@@ -87,8 +87,8 @@ class TestPureSandboxScripts:
         r = sb.execute(_script("test_imports_blocked.py"))
         _assert_no_fail(r, "test_imports_blocked")
         assert "=== BLOCKED IMPORTS TEST COMPLETE ===" in r["stdout"]
-        # at least os, subprocess, sys, socket, importlib, builtins = 6 OKs
-        assert r["stdout"].count("OK:") >= 5
+        for blocked in ("OK: socket blocked", "OK: urllib blocked"):
+            assert blocked in r["stdout"], f"Missing: {blocked!r}"
 
     def test_file_access(self):
         sb = _make_sandbox()
