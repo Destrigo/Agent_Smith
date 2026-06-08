@@ -121,7 +121,13 @@ class TestPureSandboxScripts:
         assert "OK: TCP connection blocked" in r["stdout"]
         assert "OK: HTTP request blocked" in r["stdout"]
         assert "OK: HTTPS connection blocked" in r["stdout"]
+        assert "OK: requests library blocked" in r["stdout"]
         assert "OK: non-network imports work" in r["stdout"]
+        for mod in ("socket", "urllib"):
+            ri = sb.execute(f"import {mod}")
+            assert "[SANDBOX BLOCKED]" in (ri.get("error") or ""), (
+                f"Expected {mod} to be blocked but got: {ri['observation']}"
+            )
 
     def test_persistence(self):
         """Variable assignment and print in the first (non-commented) block."""

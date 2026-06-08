@@ -124,7 +124,7 @@ class TestSyntaxErrors:
 
 class TestBlockedModules:
     @pytest.mark.parametrize("module", [
-        "os", "sys", "subprocess", "socket",
+        "os", "sys", "subprocess", "socket", "urllib",
         "threading", "asyncio", "pickle", "shutil",
     ])
     def test_blocked_module_raises(self, module):
