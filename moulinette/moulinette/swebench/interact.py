@@ -345,9 +345,8 @@ class InteractSweBench:
         img = self._image_name(instance_id)
         container = client.containers.create(
             image=img,
-            entrypoint=["tail", "-f", "/dev/null"],
+            command="tail -f /dev/null",
             detach=True,
-            privileged=True,
         )
         container.start()
         if quiet:
@@ -414,9 +413,8 @@ class InteractSweBench:
             img = self._image_name(instance_id)
             container = client.containers.create(
                 image=img,
-                entrypoint=["tail", "-f", "/dev/null"],
+                command="tail -f /dev/null",
                 detach=True,
-                privileged=True,
             )
             container.start()
             print(f"Started container {container.id}")
