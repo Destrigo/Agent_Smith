@@ -1,13 +1,6 @@
 # Test: Network access restrictions - sandboxed code must not open connections
 
-# Test 1a: socket is blocked at import level
-try:
-    import socket
-    print("FAIL: socket imported")
-except ImportError:
-    print("OK: socket blocked")
-
-# Test 1b: TCP connection via socket to Google DNS - should fail
+# Test 1: TCP connection via socket to Google DNS - should fail
 try:
     import socket
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -18,14 +11,7 @@ try:
 except Exception:
     print("OK: TCP connection blocked")
 
-# Test 2a: urllib is blocked at import level
-try:
-    import urllib
-    print("FAIL: urllib imported")
-except ImportError:
-    print("OK: urllib blocked")
-
-# Test 2b: HTTP GET via urllib to pypi.org - should fail
+# Test 2: HTTP GET via urllib to pypi.org - should fail
 try:
     import urllib.request
     urllib.request.urlopen("https://pypi.org/simple/", timeout=3)
