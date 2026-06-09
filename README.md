@@ -41,28 +41,28 @@ All models run on **free-tier API quotas only** — no paid plans or credits are
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│                         CLI Entry Points                      │
+│                         CLI Entry Points                     │
 │           agent-mbpp               agent-swebench            │
 │     (agent/cli/agent_mbpp.py)  (agent/cli/agent_swebench.py) │
 └───────────────────────┬──────────────────────────────────────┘
                         │
                         ▼
 ┌──────────────────────────────────────────────────────────────┐
-│                       Agent Loop                              │
+│                       Agent Loop                             │
 │  AgentLoop.run()  (agent/core/agent_loop.py)                 │
-│                                                               │
-│  ┌─────────────┐      ┌──────────────┐   ┌───────────────┐  │
-│  │ LLMManager  │─────▶│   Sandbox    │──▶│ SolutionOutput│  │
-│  │ (provider)  │      │  .execute()  │   │   (.json)     │  │
-│  └─────────────┘      └──────┬───────┘   └───────────────┘  │
-│                               │                               │
-└───────────────────────────────┼───────────────────────────────┘
-                                │  MCP (stdio or HTTP)
-                                ▼
+│                                                              │
+│  ┌─────────────┐      ┌──────────────┐   ┌───────────────┐   │
+│  │ LLMManager  │─────▶│   Sandbox    │──▶│ SolutionOutput│   │
+│  │ (provider)  │      │  .execute()  │   │   (.json)     │   │
+│  └─────────────┘      └──────┬───────┘   └───────────────┘   │
+│                              │                               │
+└──────────────────────────────┼───────────────────────────────┘
+                               │  MCP (stdio or HTTP)
+                               ▼
               ┌──────────────────────────────┐
-              │        MCP Tool Server        │
+              │        MCP Tool Server       │
               │  mcp_tools_mbpp.py       OR  │
-              │  mcp_tools_swebench.py        │
+              │  mcp_tools_swebench.py       │
               │                              │
               │  Shared tools:               │
               │  - read_file                 │
@@ -81,9 +81,9 @@ All models run on **free-tier API quotas only** — no paid plans or credits are
           │                                             │
           ▼ MBPP                                        ▼ SWE-bench
 ┌──────────────────────┐                 ┌─────────────────────────┐
-│  Docker container    │                 │  Docker container        │
+│  Docker container    │                 │  Docker container       │
 │  python:3.11-slim    │                 │  (per-task SWE image)   │
-│  Isolated code exec  │                 │  /testbed = git repo     │
+│  Isolated code exec  │                 │  /testbed = git repo    │
 └──────────────────────┘                 └─────────────────────────┘
 ```
 
@@ -94,20 +94,20 @@ User Message (task description + tests / issue)
       │
       ▼
 ┌────────────────────────────────────────────────────────┐
-│  while not done and within_limits():                    │
-│                                                         │
+│  while not done and within_limits():                   │
+│                                                        │
 │  1. LLM call ──▶  Thought + ```python ... ``` block    │
 │     stop_sequences = ["<end_code>", "Observation:"]    │
-│                                                         │
-│  2. CodeExtractor.extract()                             │
+│                                                        │
+│  2. CodeExtractor.extract()                            │
 │     → Python fence / XML invoke / JSON tool_call /     │
-│       ReAct Action                                      │
-│                                                         │
-│  3. Sandbox.execute(code)                               │
+│       ReAct Action                                     │
+│                                                        │
+│  3. Sandbox.execute(code)                              │
 │     → stdout / stderr / error / final_answer signal    │
-│                                                         │
-│  4. Observation appended to messages                    │
-│                                                         │
+│                                                        │
+│  4. Observation appended to messages                   │
+│                                                        │
 │  5. If final_answer() called → SolutionOutput          │
 └────────────────────────────────────────────────────────┘
 ```
