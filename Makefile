@@ -42,6 +42,8 @@ check-docker:
 install:
 	uv pip install -e .
 
+install-uv:
+	uv venv
 # ── sandbox ───────────────────────────────────────────────────────────────────
 sandbox:
 	uv run sandbox
@@ -239,9 +241,14 @@ mcp-swebench:
 
 # ── clean ─────────────────────────────────────────────────────────────────────
 clean:
-	find . -type d -name __pycache__ ! -path "./.venv/*" ! -path "./moulinette/*" \
-		| xargs rm -rf
-	find . -name "*.pyc" ! -path "./.venv/*" | xargs rm -f
+	find . -type d \( -name __pycache__ -o -name .pytest_cache -o -name .mypy_cache \) \
+		! -path "./.venv/*" ! -path "./moulinette/.venv/*" \
+		| xargs -r rm -rf
+	find . \( -name "*.pyc" -o -name "*.pyo" \) \
+		! -path "./.venv/*" ! -path "./moulinette/.venv/*" \
+		-delete
+	find . -name ".DS_Store" -delete
+	rm -rf .venv moulinette/.venv
 
 # ── help ──────────────────────────────────────────────────────────────────────
 help:
@@ -281,7 +288,7 @@ help:
 	@echo "  lint-strict      flake8 + mypy --strict"
 	@echo "  mcp-mbpp         start MBPP MCP server on port 8000"
 	@echo "  mcp-swebench     start SWE-bench MCP server on port 8001"
-	@echo "  clean            remove __pycache__ and .pyc files"
+	@echo "  clean            remove __pycache__, .pytest_cache, .mypy_cache, .pyc/.pyo"
 	@echo ""
 	@echo "  Override defaults:  make mbpp MODEL=deepseek/deepseek-r1:free MBPP_TASK=/tmp/t.json"
 	@echo ""
