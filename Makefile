@@ -88,19 +88,19 @@ swebench: check-docker
 exam-mbpp: check-docker
 	./eval_documents/exam_mbpp.sh \
 		--student-path . \
-		--moulinette-path ./moulinette \
+		--moulinette-path ./moulinette/moulinette \
 		--env-file .env
 
 exam-swebench: check-docker
 	./eval_documents/exam_swebench.sh \
 		--student-path . \
-		--moulinette-path ./moulinette \
+		--moulinette-path ./moulinette/moulinette \
 		--env-file .env
 
 exam-sandbox: check-docker
 	./eval_documents/exam_sandbox.sh \
 		--student-path . \
-		--moulinette-path ./moulinette \
+		--moulinette-path ./moulinette/moulinette \
 		--env-file .env
 
 exam-anticheat:
