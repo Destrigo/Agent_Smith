@@ -1,36 +1,13 @@
-"""
-SWE-bench MCP server — root-level entry point.
-
-The subject requires this file to be at the repository root so the sandbox
-can launch it with:
-    uv run sandbox --mcp-stdio "python mcp_tools_swebench.py" sandbox_template.json
-
-This file sets up the Python path so that the shared tools and mcp_server
-module (which live inside mcp_servers/) are importable, then runs the server.
-
-Usage
------
-    # stdio transport (default, used by the sandbox)
-    python mcp_tools_swebench.py
-
-    # streamable HTTP transport
-    python mcp_tools_swebench.py --transport http --host 0.0.0.0 --port 8001
-"""
-
 import argparse
 import os
 import sys
 
-# Make mcp_servers/ importable so internal references to shared_tools
-# and mcp_server resolve correctly regardless of the working directory.
 _ROOT = os.path.dirname(os.path.abspath(__file__))
 _MCP_SERVERS = os.path.join(_ROOT, "mcp_servers")
 for _p in (_MCP_SERVERS, _ROOT):
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
-# Importing these modules registers their tools with the shared mcp_server
-# instance via the @mcp.tool() decorator.
 import shared_tools.execution.get_patch      # noqa: F401, E402
 import shared_tools.execution.run_command    # noqa: F401, E402
 import shared_tools.execution.run_tests      # noqa: F401, E402

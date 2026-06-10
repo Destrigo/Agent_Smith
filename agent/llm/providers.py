@@ -35,8 +35,7 @@ def _parse_response(data: dict[str, Any], elapsed_ms: float, api_url: str
                     ) -> LLMResponse:
     raw_content = data.get("choices", [{}])[0].get("message", {}).get(
         "content", "")
-    # Some providers (Mistral, Anthropic-compat) return content as a list of
-    # content blocks: [{"type": "text", "text": "..."}]. Flatten to a string.
+    # some providers return content as a list of blocks — flatten to string
     if isinstance(raw_content, list):
         choice = "".join(
             block.get("text", "") for block in raw_content
@@ -84,14 +83,11 @@ def _generic(request: LLMRequest) -> LLMResponse:
     return openai_compatible_call(request)
 
 
-# Registry maps provider name → callable.
-# Provider name is resolved from AGENT_PROVIDER env var or --provider flag.
-# API key is loaded from <PROVIDER_UPPER>_API_KEY (e.g. MISTRAL_API_KEY).
 PROVIDER_REGISTRY: dict[str, Callable[[LLMRequest], LLMResponse]] = {
-    "openrouter": _openrouter,   # https://openrouter.ai/api/v1
-    "mistral":    _generic,      # https://api.mistral.ai/v1  ← recommended (best benchmark results)
-    "groq":       _generic,      # https://api.groq.com/openai/v1
-    "gemini":     _gemini,       # https://generativelanguage.googleapis.com/v1beta/openai
-    "together":   _generic,      # https://api.together.xyz/v1
-    "deepseek":   _generic,      # https://api.deepseek.com/v1
+    "openrouter": _openrouter,
+    "mistral":    _generic,
+    "groq":       _generic,
+    "gemini":     _gemini,
+    "together":   _generic,
+    "deepseek":   _generic,
 }

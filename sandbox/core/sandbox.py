@@ -15,20 +15,13 @@ from models.sandbox_model import SandboxConfig
 
 
 class FinalAnswerSignal(Exception):
-    """Raised inside the sandbox when final_answer() is called.
-
-    Inherits from Exception (not BaseException) so exam test code that wraps
-    the call in `except Exception` can catch it and continue execution.
-    In normal agent use final_answer() is never wrapped in a try/except,
-    so this does not affect the agent loop's behaviour.
-    """
+    """Inherits from Exception so test code can catch it; BaseException would bypass bare except."""
 
     def __init__(self, answer: str):
         self.answer = answer
         super().__init__(f"final_answer called: {answer[:80]}")
 
 
-# Modules that must never be importable regardless of the allowlist.
 _BLOCKED_MODULES: frozenset[str] = frozenset({
     "os",
     "sys",
@@ -64,7 +57,6 @@ _BLOCKED_MODULES: frozenset[str] = frozenset({
     "builtins",
 })
 
-# Builtins that are always removed from the sandbox namespace.
 _BLOCKED_BUILTINS: frozenset[str] = frozenset({
     "eval",
     "exec",
@@ -78,12 +70,10 @@ _BLOCKED_BUILTINS: frozenset[str] = frozenset({
     "breakpoint",
 })
 
-# Maximum bytes captured from stdout + stderr before truncation.
 _MAX_OUTPUT_BYTES: int = 8192
 
 
 def _truncate(text: str, limit: int) -> tuple[str, bool]:
-    """Return (possibly-truncated text, was_truncated)."""
     encoded = text.encode("utf-8", errors="replace")
     if len(encoded) <= limit:
         return text, False
@@ -91,7 +81,6 @@ def _truncate(text: str, limit: int) -> tuple[str, bool]:
 
 
 def _current_vas_bytes() -> int:
-    """Return the process's current virtual address space in bytes (Linux only)."""
     try:
         with open("/proc/self/status") as f:
             for line in f:
@@ -103,35 +92,9 @@ def _current_vas_bytes() -> int:
 
 
 class Sandbox:
-    """
-    Executes LLM-generated Python code in an isolated namespace.
+    """Executes LLM-generated Python code in an isolated namespace.
 
-    Security constraints
-    --------------------
-    - Only modules listed in SandboxConfig.authorized_imports may be imported.
-    - File-system access is limited to SandboxConfig.allowed_directories.
-    - Network access is blocked (socket and friends are in _BLOCKED_MODULES).
-    - Execution is time-limited to SandboxConfig.max_execution_time_seconds.
-    - Dangerous builtins (eval, exec, compile, open, …) are removed.
-
-    Feedback contract
-    -----------------
-    The dict returned by execute() always contains an 'observation' key with a
-    human-readable string ready to be appended to the LLM conversation. The LLM
-    is never left guessing about what happened:
-      - No code block found        → caller sets code="" and checks observation
-      - Malformed / interpreted    → caller sets code=cleaned and passes note
-      - Timeout                    → observation says "TIMEOUT" + partial output
-      - Output truncated           → observation says "TRUNCATED"
-      - Normal error               → observation contains the exception text
-      - Success                    → observation contains stdout/stderr output
-
-    Design decision — in-process threading
-    ---------------------------------------
-    We execute code in a daemon thread rather than a subprocess so that the
-    sandbox namespace persists across steps. The thread is joined with a
-    timeout; if it is still alive after the deadline the result is marked as
-    timed-out. True process isolation would require serialising the namespace.
+    Runs in a daemon thread (not subprocess) so the namespace persists across steps.
     """
 
     def __init__(self, config: SandboxConfig):
@@ -146,7 +109,6 @@ class Sandbox:
         }
 
     def register_mcp_tools(self, tools: Dict[str, Any]) -> None:
-        """Inject MCP tool callables into the sandbox namespace."""
         for name, fn in tools.items():
             self._namespace[name] = fn
 
@@ -207,17 +169,8 @@ class Sandbox:
             f"{self.config.allowed_directories}"
         )
 
-    # ------------------------------------------------------------------
-    # Public helpers for the agent loop — explicit feedback construction
-    # ------------------------------------------------------------------
-
     @staticmethod
     def no_code_feedback() -> dict[str, Any]:
-        """
-        Return the observation dict when the LLM response had no code block.
-        The agent loop should call this instead of execute() and feed the
-        result back to the LLM so it knows it must emit a code block.
-        """
         msg = (
             "[SANDBOX ERROR] No valid Python code block was found in your "
             "response. You must wrap your code in a markdown code block:\n"
@@ -238,35 +191,13 @@ class Sandbox:
 
     @staticmethod
     def malformed_code_feedback(original: str, interpreted: str) -> str:
-        """
-        Return a warning string when a code block was malformed but the
-        agent loop was able to recover and interpret it anyway.
-        Callers should still execute `interpreted`; prepend this warning
-        to the real execution observation so the LLM knows what happened.
-        """
         return (
             f"[SANDBOX WARNING] The code block was malformed. "
             f"It was interpreted as:\n```python\n{interpreted}\n```\n"
             f"Original response snippet:\n{original[:200]}"
         )
 
-    # ------------------------------------------------------------------
-    # Core execution
-    # ------------------------------------------------------------------
-
     def execute(self, code: str) -> dict[str, Any]:
-        """
-        Execute *code* inside the sandbox.
-
-        Returns a dict with keys:
-            success      bool
-            stdout       str   (possibly truncated)
-            stderr       str   (possibly truncated)
-            error        str | None  — exception / timeout / truncation note
-            final_answer str | None  — value passed to final_answer(), if any
-            truncated    bool  — True when stdout/stderr were cut
-            observation  str   — ready-to-use feedback string for the LLM
-        """
         try:
             ast.parse(code)
         except SyntaxError as e:
@@ -284,18 +215,8 @@ class Sandbox:
         stdout_buf = io.StringIO()
         stderr_buf = io.StringIO()
 
-        # Inject a custom print() into the sandbox namespace that writes to
-        # our StringIO buffers instead of the real sys.stdout/sys.stderr.
-        #
-        # We deliberately avoid redirect_stdout/redirect_stderr context
-        # managers here.  In Python 3.14, thread.start() blocks until the
-        # new thread reaches a "running" state.  When the thread's first
-        # action is setattr(sys, 'stdout', buf) (inside redirect_stdout),
-        # there is a race: the thread can redirect sys.stdout before the
-        # main thread's next print() executes, silently swallowing all CLI
-        # output.  Injecting print() into the exec namespace avoids touching
-        # the global sys.stdout entirely.
-
+        # inject print() into the namespace instead of redirect_stdout to avoid a
+        # thread-start race in Python 3.14 that silently swallows CLI output
         def _sandbox_print(*args: Any, sep: str = " ", end: str = "\n", file: Any = None, flush: bool = False) -> None:
             import sys as _sys
             if file is None or file is _sys.stdout:
@@ -307,10 +228,7 @@ class Sandbox:
             text = sep.join(str(a) for a in args) + end
             target.write(text)
 
-        # Execute in a per-step snapshot so that a timed-out thread cannot
-        # mutate self._namespace while the next step's thread is also running.
-        # On success the snapshot is merged back; on timeout it is discarded
-        # and self._namespace is left unchanged from before this call.
+        # per-step snapshot: merged back on success, discarded on timeout
         ns_snapshot = dict(self._namespace)
         ns_snapshot["print"] = _sandbox_print
 
@@ -346,24 +264,10 @@ class Sandbox:
             except Exception as exc:
                 exc_holder.append(exc)
 
-        # --- Memory limit: set BEFORE thread.start() to close the race window.
-        #
-        # Setting it after thread.start() creates a race: the daemon thread can
-        # call mmap/malloc (e.g. bytearray(512 MB)) and return before the main
-        # thread reaches setrlimit, letting the allocation succeed even though it
-        # exceeds the configured limit.
-        #
-        # RLIMIT_AS is process-wide; we restore it from the main thread after
-        # join() so even a timed-out (still-alive) thread doesn't leave the
-        # reduced limit in place for subsequent sandbox calls.
-        #
-        # The limit is:  current_VAS  +  thread-stack headroom (16 MB)
-        #                             +  max_memory_mb
-        # so the sandbox code has exactly max_memory_mb of additional virtual
-        # space while still leaving room for the thread stack that is mmap'd
-        # during thread.start().  Setting an absolute cap of max_memory_mb
-        # would be below Python's own VAS baseline and would crash the process.
-        _THREAD_STACK_HEADROOM = 16 * 1024 * 1024  # 16 MB
+        # set RLIMIT_AS before thread.start() to close the allocation race window;
+        # cap = current_VAS + stack headroom + max_memory_mb (not an absolute cap
+        # or we'd be below Python's own baseline and crash)
+        _THREAD_STACK_HEADROOM = 16 * 1024 * 1024
         _orig_as = None
         if _HAS_RESOURCE and self.config.max_memory_mb > 0:
             try:
@@ -387,14 +291,13 @@ class Sandbox:
 
         thread.join(timeout=self.config.max_execution_time_seconds)
 
-        # Always restore — even if join timed out.
+        # always restore — even if join timed out
         if _HAS_RESOURCE and _orig_as is not None:
             try:
                 _resource.setrlimit(_resource.RLIMIT_AS, _orig_as)
             except Exception:
                 pass
 
-        # Collect and truncate output
         raw_stdout = stdout_buf.getvalue()
         raw_stderr = stderr_buf.getvalue()
         stdout, stdout_cut = _truncate(raw_stdout, _MAX_OUTPUT_BYTES)
@@ -412,9 +315,7 @@ class Sandbox:
 
         # Timeout check
         if thread.is_alive():
-            # Inject TimeoutError into the thread so bare-except loops can be
-            # interrupted (layer 0.5). Without this, a `except: pass` loop
-            # would run forever since thread.join() never raises in the thread.
+            # raise TimeoutError in the thread via ctypes so bare-except loops can be interrupted
             try:
                 import ctypes as _ctypes
                 _ctypes.pythonapi.PyThreadState_SetAsyncExc(
@@ -425,7 +326,6 @@ class Sandbox:
             except Exception:
                 pass
 
-            # Collect any additional output produced after the injection.
             raw_stdout = stdout_buf.getvalue()
             raw_stderr = stderr_buf.getvalue()
             stdout, stdout_cut = _truncate(raw_stdout, _MAX_OUTPUT_BYTES)
@@ -433,8 +333,6 @@ class Sandbox:
             outcome["stdout"] = stdout
             outcome["stderr"] = stderr
 
-            # ns_snapshot may be partially written by the still-running thread;
-            # discard it so self._namespace stays in the last known-good state.
             partial = stdout or stderr or "(no output captured)"
             timeout_msg = (
                 f"[SANDBOX TIMEOUT] Code exceeded the "
@@ -445,14 +343,11 @@ class Sandbox:
             outcome["observation"] = timeout_msg
             return outcome
 
-        # Thread completed — merge snapshot back into the persistent namespace.
         self._namespace.update(ns_snapshot)
 
-        # Final-answer signal
         if fa_holder:
             outcome["final_answer"] = fa_holder[0]
 
-        # Runtime exception
         if exc_holder:
             exc = exc_holder[0]
             if isinstance(exc, MemoryError):
@@ -461,7 +356,6 @@ class Sandbox:
             else:
                 outcome["error"] = f"{type(exc).__name__}: {exc}"
 
-        # Build the observation string the agent loop feeds to the LLM
         parts: List[str] = []
         if stdout:
             parts.append(stdout)
