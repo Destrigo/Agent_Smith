@@ -14,12 +14,11 @@ unexport VIRTUAL_ENV
 # ── defaults ──────────────────────────────────────────────────────────────────
 # Rate limits (free tier, requests/s):
 #   mistral-large-latest  : 0.08 RPS  — default; strong reasoning, 7/8 SWE
-#   mistral-medium-2505   : ~0.83 RPS — medium alternative (use instead of
-#                           mistral-medium-latest if rate limits are tightened)
-#   codestral-2508        : 2.08 RPS  — fast iteration; best for high-volume runs
+#   mistral-medium-latest : ~0.83 RPS — higher throughput; rate limit may tighten
+#   mistral-medium-2505   : ~0.83 RPS — pinned snapshot; use if medium-latest hits 429s
 MODEL    ?= mistral-large-latest
+# MODEL  ?= mistral-medium-latest
 # MODEL  ?= mistral-medium-2505
-# MODEL  ?= codestral-2508
 URL      ?= https://api.mistral.ai/v1
 PROVIDER ?= mistral
 # Separate temp paths so run-mbpp and run-swebench don't overwrite each other
