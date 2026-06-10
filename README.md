@@ -78,8 +78,8 @@ All models run on **free-tier API quotas only** — no paid plans or credits are
               └──────────────────────────────┘
                                 │
           ┌─────────────────────┴──────────────────────┐
-          │                                             │
-          ▼ MBPP                                        ▼ SWE-bench
+          │                                            │
+          ▼ MBPP                                       ▼ SWE-bench
 ┌──────────────────────┐                 ┌─────────────────────────┐
 │  Docker container    │                 │  Docker container       │
 │  python:3.11-slim    │                 │  (per-task SWE image)   │
