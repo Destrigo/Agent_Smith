@@ -330,8 +330,8 @@ nemo  (~7B) │ 0%
 
 | Tier | Recommendation | Justification |
 |------|---------------|---------------|
-| **Primary** | `mistral-medium-latest` | 100% SWE (8/8 tasks), 90% MBPP, fastest avg task time (19 s), 0 retries, lowest token cost per success |
-| **Fallback** | `mistral-large-latest` | Same pool accuracy (6/6), 7/8 overall (fails extra-1), +1% MBPP, but 3× slower and rate-limited |
+| **Primary** | `mistral-large-latest` | 7/8 SWE (6/6 pool), 91% MBPP, low iteration count (5.8 avg), available on Mistral free tier |
+| **Fallback** | `mistral-medium-latest` | 100% SWE (8/8 tasks), 90% MBPP, fastest avg task time (19 s), 0 retries — better throughput but lower MBPP score |
 | **Budget** | `ministral-8b-latest` | 5/8 SWE (67% pool, 63% overall), 84% MBPP, fast and reliable; best sub-70B option |
 | **Discard** | `ministral-3b-latest` | 17% SWE, 42% MBPP — below the minimum useful threshold |
 | **Discard** | `devstral-latest` / `devstral-medium-latest` | Worse than general-purpose equivalents; higher iteration cost |

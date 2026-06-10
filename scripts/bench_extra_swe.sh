@@ -12,7 +12,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-MOULINETTE_DIR="$PROJECT_DIR/moulinette"
+MOULINETTE_DIR="$PROJECT_DIR/moulinette/moulinette"
 
 # ── extra SWE-bench tasks (beyond EXAM_POOL) ──────────────────────────────────
 EXTRA_TASKS=(

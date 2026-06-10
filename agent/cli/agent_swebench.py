@@ -74,7 +74,7 @@ def main() -> None:
     parser.add_argument("--task-file", required=True)
     parser.add_argument("--output", required=True)
     parser.add_argument("--model-name",
-                        default=os.getenv("AGENT_MODEL", "mistral-medium-latest"))
+                        default=os.getenv("AGENT_MODEL", "mistral-large-latest"))
     parser.add_argument("--provider-url",
                         default=os.getenv("AGENT_PROVIDER_URL",
                                           "https://api.mistral.ai/v1"))

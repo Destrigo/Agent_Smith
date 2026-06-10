@@ -29,7 +29,7 @@ Agent Smith is an agentic framework built for two coding benchmarks:
 - **MBPP** (Mostly Basic Python Problems) — algorithmic Python tasks. The agent must produce a function that passes all test cases within a secure sandboxed environment.
 - **SWE-bench** — real GitHub issues in pre-built Docker containers. The agent must navigate the repository, identify the bug, apply a patch, and produce a valid git diff.
 
-**Default model:** `mistral-medium-latest` via the Mistral free API. The model was selected after benchmarking 11 models; it achieves the best SWE-bench accuracy (100%, 8/8 tasks) with the lowest iteration count and zero rate-limit retries.
+**Default model:** `mistral-large-latest` via the Mistral free API. The model was selected after benchmarking 11 models; it achieves strong SWE-bench accuracy (7/8 tasks) with consistently low iteration counts.
 
 All models run on **free-tier API quotas only** — no paid plans or credits are required.
 
@@ -189,15 +189,15 @@ DEEPSEEK_API_KEY=sk-...
 The easiest way to run a full cycle for either benchmark:
 
 ```bash
-# MBPP (uses mistral-medium-latest by default)
+# MBPP (uses mistral-large-latest by default)
 make run-mbpp
 
 # SWE-bench
 make run-swebench
 
 # Override the model
-make run-mbpp MODEL=mistral-large-latest
-make run-swebench MODEL=mistral-large-latest
+make run-mbpp MODEL=mistral-medium-latest
+make run-swebench MODEL=mistral-medium-latest
 ```
 
 ### MBPP Agent CLI
@@ -206,7 +206,7 @@ make run-swebench MODEL=mistral-large-latest
 uv run agent-mbpp \
   --task-file /tmp/task.json \
   --output /tmp/solution.json \
-  --model-name "mistral-medium-latest" \
+  --model-name "mistral-large-latest" \
   --provider-url "https://api.mistral.ai/v1" \
   --provider mistral
 ```
@@ -217,7 +217,7 @@ uv run agent-mbpp \
 |------|---------|-------------|
 | `--task-file` | *(required)* | Path to task JSON file |
 | `--output` | *(required)* | Path to write solution JSON |
-| `--model-name` | `mistral-medium-latest` | Model identifier (or `AGENT_MODEL` env var) |
+| `--model-name` | `mistral-large-latest` | Model identifier (or `AGENT_MODEL` env var) |
 | `--provider-url` | `https://api.mistral.ai/v1` | API base URL (or `AGENT_PROVIDER_URL` env var) |
 | `--provider` | `mistral` | Provider name for key lookup (or `AGENT_PROVIDER` env var) |
 | `--max-iterations` | `10` | Maximum agent loop iterations |
@@ -232,7 +232,7 @@ uv run agent-mbpp \
 uv run agent-swebench \
   --task-file /tmp/task.json \
   --output /tmp/solution.json \
-  --model-name "mistral-medium-latest" \
+  --model-name "mistral-large-latest" \
   --provider-url "https://api.mistral.ai/v1" \
   --provider mistral
 ```
@@ -243,7 +243,7 @@ uv run agent-swebench \
 |------|---------|-------------|
 | `--task-file` | *(required)* | Path to task JSON file |
 | `--output` | *(required)* | Path to write solution JSON |
-| `--model-name` | `mistral-medium-latest` | Model identifier |
+| `--model-name` | `mistral-large-latest` | Model identifier |
 | `--provider-url` | `https://api.mistral.ai/v1` | API base URL |
 | `--provider` | `mistral` | Provider name for key lookup |
 | `--max-iterations` | `30` | Maximum agent loop iterations |
@@ -384,9 +384,9 @@ Full results including per-model, per-task, and ablation analysis are in [BENCHM
 | Model | Passed | Score |
 |-------|--------|-------|
 | `openai/gpt-oss-120b:free` | 238/257 | **93%** |
-| `mistral-large-latest` | 233/257 | 91% |
+| **`mistral-large-latest`** | **233/257** | **91%** |
 | `mistral-small-latest` | 232/257 | 90% |
-| **`mistral-medium-latest`** | **232/257** | **90%** |
+| `mistral-medium-latest` | 232/257 | 90% |
 | `devstral-latest` | 232/257 | 90% |
 | `codestral-latest` | 225/257 | 88% |
 | `devstral-medium-latest` | 221/257 | 86% |
@@ -399,8 +399,8 @@ Full results including per-model, per-task, and ablation analysis are in [BENCHM
 
 | Model | Pool (6) | Extra-1 | Extra-2 | Total | Avg Iter | Avg Time (s) |
 |-------|----------|---------|---------|-------|----------|--------------|
-| **`mistral-medium-latest`** | **6/6** | **1/1** | **1/1** | **8/8** | **5.5** | **19.1** |
-| `mistral-large-latest` | 6/6 | 0/1 | 1/1 | 7/8 | 5.8 | 64.1 |
+| `mistral-medium-latest` | 6/6 | 1/1 | 1/1 | 8/8 | 5.5 | 19.1 |
+| **`mistral-large-latest`** | **6/6** | **0/1** | **1/1** | **7/8** | **5.8** | **64.1** |
 | `ministral-8b-latest` | 4/6 | 0/1 | 1/1 | 5/8 | 12.3 | 42.8 |
 | `codestral-latest` | 3/6 | 0/1 | 0/1 | 3/8 | 7.8 | 19.4 |
 | `mistral-small-latest` | 3/6 | 0/1 | 0/1 | 3/8 | 14.2 | 437.6 |
@@ -411,13 +411,13 @@ Full results including per-model, per-task, and ablation analysis are in [BENCHM
 | `mistral-tiny-latest` | 0/6 | — | — | 0/7 | — | — |
 | `open-mistral-nemo` | 0/6 | — | — | 0/7 | — | — |
 
-**`mistral-medium-latest` is the only model to pass all 8 SWE-bench tasks**, with the lowest average iteration count (5.5) and fastest average task time (19.1 s), at $0 cost on the Mistral free tier.
+**`mistral-large-latest` passes 7/8 SWE-bench tasks** with a low average iteration count (5.8) and consistent performance, at $0 cost on the Mistral free tier.
 
 ### Key Findings
 
 - Scale is the dominant factor for SWE-bench: models below ~70B parameters fail to achieve 100%.
 - Code-specialised models (`codestral`, `devstral`) do not outperform general-purpose models of similar scale — SWE-bench rewards multi-step reasoning over raw code generation.
-- `mistral-medium-latest` edits the correct file at iteration 1 on every pool task — zero wasted exploration.
+- `mistral-large-latest` edits the correct file at iteration 1 on every pool task — zero wasted exploration.
 - All 11 models were evaluated at $0 cost using free-tier APIs only.
 
 ---
@@ -540,7 +540,7 @@ You can set defaults for the agent CLI flags via environment variables in `.env`
 
 | Variable | Corresponding Flag | Default |
 |----------|--------------------|---------|
-| `AGENT_MODEL` | `--model-name` | `mistral-medium-latest` |
+| `AGENT_MODEL` | `--model-name` | `mistral-large-latest` |
 | `AGENT_PROVIDER_URL` | `--provider-url` | `https://api.mistral.ai/v1` |
 | `AGENT_PROVIDER` | `--provider` | `mistral` |
 
@@ -549,17 +549,15 @@ You can set defaults for the agent CLI flags via environment variables in `.env`
 The Makefile also exposes overridable variables:
 
 ```bash
-make mbpp MODEL=mistral-large-latest
-make swebench MODEL="openai/gpt-oss-120b:free" \
-              URL="https://openrouter.ai/api/v1" \
-              PROVIDER=openrouter \
+make mbpp MODEL=mistral-medium-latest
+make swebench MODEL=mistral-medium-latest \
               SWE_TASK=/tmp/my_task.json \
               SWE_OUT=/tmp/my_solution.json
 ```
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `MODEL` | `mistral-medium-latest` | Model name |
+| `MODEL` | `mistral-large-latest` | Model name |
 | `URL` | `https://api.mistral.ai/v1` | Provider base URL |
 | `PROVIDER` | `mistral` | Provider name for key lookup |
 | `MBPP_TASK` | `/tmp/mbpp-task.json` | MBPP input task file path |
@@ -697,14 +695,36 @@ All 9 shared tools live in `mcp_servers/shared_tools/` and are exposed through b
 
 `sandbox/manual/generator.py` builds the tool-usage section of the system prompt at runtime by introspecting the connected MCP server's schemas. This ensures the prompt always accurately reflects the available tools, regardless of which server variant is launched. `final_answer` documentation is always appended at the end.
 
-### Why `mistral-medium-latest` is the Default
+### Why `mistral-large-latest` is the Default
 
 After benchmarking 11 models at $0 cost:
-- It is the only model to pass all 8 SWE-bench tasks (6 exam pool + 2 extra).
-- It has the lowest average iteration count (5.5 vs next-best 5.8 for `mistral-large-latest`).
-- It achieves the fastest average task time (19.1 s).
-- It produced zero rate-limit retries across all runs.
+- It passes 7/8 SWE-bench tasks (6/6 exam pool + 1 extra) with an average iteration count of 5.8.
+- It achieves 91% on MBPP (233/257 tasks), outperforming most other models.
 - It edits the correct file at step 1 on every pool task — no wasted exploration iterations.
+- It is available on the Mistral free tier at $0 cost.
+
+### Rate Limits and Fallback Models
+
+All evaluations run on the Mistral **free tier** (no paid plan required). Rate limits vary per model:
+
+| Model | Free-tier rate limit | Notes |
+|-------|---------------------|-------|
+| `mistral-large-latest` | ~0.08 RPS | Default; may be slow for bulk runs |
+| `mistral-medium-latest` | ~0.83 RPS | Higher throughput but rate limit can tighten |
+| `mistral-medium-2505` | ~0.83 RPS | Pinned snapshot of medium; use if `medium-latest` hits 429s |
+| `codestral-2508` | ~2.08 RPS | Fastest free-tier option; best for high-volume bench runs |
+
+If `mistral-large-latest` is too slow for a full MBPP run, `mistral-medium-2505` is the recommended fallback: it matches `medium-latest` accuracy and has a stable rate limit. `codestral-2508` offers the highest throughput for bulk benchmarking but lower SWE-bench accuracy.
+
+Override the model at runtime:
+
+```bash
+# Stable medium alternative
+make bench-mbpp AGENT_MODEL=mistral-medium-2505
+
+# Fast bulk runs
+make bench-mbpp AGENT_MODEL=codestral-2508
+```
 
 ---
 

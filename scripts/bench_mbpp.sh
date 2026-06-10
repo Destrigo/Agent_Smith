@@ -14,7 +14,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-MOULINETTE_DIR="$PROJECT_DIR/moulinette"
+MOULINETTE_DIR="$PROJECT_DIR/moulinette/moulinette"
 
 # ── defaults ──────────────────────────────────────────────────────────────────
 N=0          # 0 = all tasks
@@ -34,7 +34,7 @@ done
 # ── load .env ─────────────────────────────────────────────────────────────────
 [ -f "$PROJECT_DIR/.env" ] && set -a && source "$PROJECT_DIR/.env" && set +a
 
-MODEL="${AGENT_MODEL:-mistral-medium-latest}"
+MODEL="${AGENT_MODEL:-mistral-large-latest}"
 URL="${AGENT_PROVIDER_URL:-https://api.mistral.ai/v1}"
 PROVIDER="${AGENT_PROVIDER:-mistral}"
 

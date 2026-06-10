@@ -12,7 +12,14 @@ unexport VIRTUAL_ENV
         lint lint-strict mcp-mbpp mcp-swebench clean help
 
 # ── defaults ──────────────────────────────────────────────────────────────────
-MODEL    ?= mistral-medium-latest
+# Rate limits (free tier, requests/s):
+#   mistral-large-latest  : 0.08 RPS  — default; strong reasoning, 7/8 SWE
+#   mistral-medium-2505   : ~0.83 RPS — medium alternative (use instead of
+#                           mistral-medium-latest if rate limits are tightened)
+#   codestral-2508        : 2.08 RPS  — fast iteration; best for high-volume runs
+MODEL    ?= mistral-large-latest
+# MODEL  ?= mistral-medium-2505
+# MODEL  ?= codestral-2508
 URL      ?= https://api.mistral.ai/v1
 PROVIDER ?= mistral
 # Separate temp paths so run-mbpp and run-swebench don't overwrite each other

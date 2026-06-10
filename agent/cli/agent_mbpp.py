@@ -65,7 +65,7 @@ def main() -> None:
     parser.add_argument("--output", required=True,
                         help="Path to write solution JSON")
     parser.add_argument("--model-name",
-                        default=os.getenv("AGENT_MODEL", "mistral-medium-latest"),
+                        default=os.getenv("AGENT_MODEL", "mistral-large-latest"),
                         help="Model identifier (or set AGENT_MODEL in .env)")
     parser.add_argument("--provider-url",
                         default=os.getenv("AGENT_PROVIDER_URL",
