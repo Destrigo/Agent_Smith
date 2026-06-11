@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 # Flat 60s backoff on all retries: avoids burning tokens on short sleeps
 # that don't clear Mistral's per-minute rate-limit window.
 _BACKOFF = [60, 60, 60, 60, 60]
+# _BACKOFF = [1, 2, 4, 8, 60]
 MAX_RETRIES = 5
 
 
