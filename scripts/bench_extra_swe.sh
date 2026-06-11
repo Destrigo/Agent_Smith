@@ -11,7 +11,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-MOULINETTE_DIR="$PROJECT_DIR/moulinette/moulinette"
+MOULINETTE_DIR="$PROJECT_DIR/moulinette"
 
 EXTRA_TASKS=(
     "django__django-16082"   # MOD operator output_field

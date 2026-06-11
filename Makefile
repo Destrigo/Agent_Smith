@@ -88,19 +88,19 @@ swebench: check-docker
 exam-mbpp: check-docker
 	./eval_documents/exam_mbpp.sh \
 		--student-path . \
-		--moulinette-path ./moulinette/moulinette \
+		--moulinette-path ./moulinette \
 		--env-file .env
 
 exam-swebench: check-docker
 	./eval_documents/exam_swebench.sh \
 		--student-path . \
-		--moulinette-path ./moulinette/moulinette \
+		--moulinette-path ./moulinette \
 		--env-file .env
 
 exam-sandbox: check-docker
 	./eval_documents/exam_sandbox.sh \
 		--student-path . \
-		--moulinette-path ./moulinette/moulinette \
+		--moulinette-path ./moulinette \
 		--env-file .env
 
 exam-anticheat:
@@ -254,7 +254,7 @@ clean:
 		! -path "./.venv/*" ! -path "./moulinette/.venv/*" \
 		-delete
 	find . -name ".DS_Store" -delete
-	rm -rf .venv moulinette/.venv
+	rm -rf .venv moulinette/.venv moulinette/__pycache__
 
 # ── help ──────────────────────────────────────────────────────────────────────
 help:
