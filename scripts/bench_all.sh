@@ -9,34 +9,28 @@
 #
 # Results are saved in evaluations/bench_all/<datetime>/
 # A SUMMARY.md is generated at the end.
-#
-# Compatible with bash 3.2+ (macOS default shell).
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-# ── models to benchmark ───────────────────────────────────────────────────────
 # Format: "model_id|provider|url"
 MODELS=(
-    # ── Already completed ──────────────────────────────────────────────────────
-    # "mistral-small-latest|mistral|https://api.mistral.ai/v1"         # 232/257 90%  SWE 3/6
-    # "mistral-medium-latest|mistral|https://api.mistral.ai/v1"        # 232/257 90%  SWE 6/6
-    # "mistral-large-latest|mistral|https://api.mistral.ai/v1"         # 233/257 91%  SWE 6/6
-    # "codestral-latest|mistral|https://api.mistral.ai/v1"             # 225/257 88%  SWE 3/6
-    # "devstral-latest|mistral|https://api.mistral.ai/v1"              # 232/257 90%  SWE 2/6
-    # "ministral-8b-latest|mistral|https://api.mistral.ai/v1"          # 217/257 84%  SWE 4/6
-    # "openai/gpt-oss-120b:free|openrouter|https://openrouter.ai/api/v1" # 238/257 93% SWE 2/6 (495m!)
-
-    # ── Remaining: Mistral (smaller/newer) ───────────────────────────────────
-    # "ministral-3b-latest|mistral|https://api.mistral.ai/v1"  # 109/257 42%  SWE 1/6
-    # "devstral-medium-latest|mistral|https://api.mistral.ai/v1" # 221/257 86% SWE 3/6
+    # Completed runs (commented out to skip re-running):
+    # "mistral-small-latest|mistral|https://api.mistral.ai/v1"           # 232/257 90%  SWE 3/6
+    # "mistral-medium-latest|mistral|https://api.mistral.ai/v1"          # 232/257 90%  SWE 6/6
+    # "mistral-large-latest|mistral|https://api.mistral.ai/v1"           # 233/257 91%  SWE 6/6
+    # "codestral-latest|mistral|https://api.mistral.ai/v1"               # 225/257 88%  SWE 3/6
+    # "devstral-latest|mistral|https://api.mistral.ai/v1"                # 232/257 90%  SWE 2/6
+    # "ministral-8b-latest|mistral|https://api.mistral.ai/v1"            # 217/257 84%  SWE 4/6
+    # "openai/gpt-oss-120b:free|openrouter|https://openrouter.ai/api/v1" # 238/257 93%  SWE 2/6
+    # "ministral-3b-latest|mistral|https://api.mistral.ai/v1"            # 109/257 42%  SWE 1/6
+    # "devstral-medium-latest|mistral|https://api.mistral.ai/v1"         # 221/257 86%  SWE 3/6
     "mistral-tiny-latest|mistral|https://api.mistral.ai/v1"
     "open-mistral-nemo|mistral|https://api.mistral.ai/v1"
 )
 
-# ── arg parsing ───────────────────────────────────────────────────────────────
 RUN_MBPP=1
 RUN_SWE=1
 MBPP_N=""
@@ -50,7 +44,6 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# ── setup ─────────────────────────────────────────────────────────────────────
 [ -f "$PROJECT_DIR/.env" ] && set -a && source "$PROJECT_DIR/.env" && set +a
 
 DATETIME=$(date +"%Y-%m-%d_%H-%M-%S")
@@ -62,7 +55,6 @@ mkdir -p "$OUT_DIR"
 
 log() { printf "[%s] %s\n" "$(date +%H:%M:%S)" "$*" | tee -a "$LOG_FILE"; }
 
-# ── header ────────────────────────────────────────────────────────────────────
 log "=================================================="
 log "FULL BENCHMARK RUN"
 log "=================================================="
@@ -72,10 +64,8 @@ log "SWE:     $([ $RUN_SWE  -eq 1 ] && echo yes || echo no)"
 log "Output:  $OUT_DIR"
 log "=================================================="
 
-# TSV header for results (used to build SUMMARY.md at the end)
 printf "model\tprovider\tmbpp_score\tswe_score\telapsed_min\n" > "$RESULTS_FILE"
 
-# ── run each model ────────────────────────────────────────────────────────────
 TOTAL_MODELS=${#MODELS[@]}
 MODEL_IDX=0
 
@@ -93,9 +83,7 @@ for ENTRY in "${MODELS[@]}"; do
     log "[$MODEL_IDX/$TOTAL_MODELS] === $MODEL ($PROVIDER) ==="
     MODEL_START=$(date +%s)
 
-    # ── MBPP ──────────────────────────────────────────────────────────────────
     MBPP_SCORE="n/a"
-
     if [ $RUN_MBPP -eq 1 ]; then
         log "  Running MBPP..."
         MBPP_ARGS=""
@@ -116,9 +104,7 @@ for ENTRY in "${MODELS[@]}"; do
         log "  MBPP: $MBPP_SCORE"
     fi
 
-    # ── SWE-bench ─────────────────────────────────────────────────────────────
     SWE_SCORE="n/a"
-
     if [ $RUN_SWE -eq 1 ]; then
         log "  Running SWE-bench..."
         SWE_OUT=$(AGENT_MODEL="$MODEL" AGENT_PROVIDER_URL="$URL" AGENT_PROVIDER="$PROVIDER" \
@@ -140,13 +126,11 @@ for ENTRY in "${MODELS[@]}"; do
     ELAPSED_MIN=$(( (MODEL_END - MODEL_START) / 60 ))
     log "  Done in ${ELAPSED_MIN}m"
 
-    # Append to TSV results file
     printf "%s\t%s\t%s\t%s\t%s\n" \
         "$MODEL" "$PROVIDER" "$MBPP_SCORE" "$SWE_SCORE" "${ELAPSED_MIN}m" \
         >> "$RESULTS_FILE"
 done
 
-# ── write SUMMARY.md ──────────────────────────────────────────────────────────
 log ""
 log "Writing summary to $SUMMARY_FILE"
 
@@ -159,7 +143,6 @@ log "Writing summary to $SUMMARY_FILE"
     echo "|---|-------|----------|------------------|---------------------|------|"
 
     IDX=0
-    # Read results TSV (skip header line)
     tail -n +2 "$RESULTS_FILE" | while IFS=$'\t' read -r MODEL PROVIDER MBPP_SCORE SWE_SCORE ELAPSED; do
         IDX=$((IDX + 1))
         echo "| $IDX | \`$MODEL\` | $PROVIDER | $MBPP_SCORE | $SWE_SCORE | $ELAPSED |"
@@ -178,13 +161,6 @@ log "Writing summary to $SUMMARY_FILE"
     echo "- SWE-bench pass threshold (exam): 2/3 random tasks from pool of 6"
     echo "- Detailed logs per model: \`bench_all/<datetime>/<model>/mbpp.log\` and \`swe.log\`"
     echo "- Individual task solutions: inside \`evaluations/bench_mbpp/\` and \`evaluations/bench_swebench/\`"
-    echo ""
-    echo "## Ablation Study"
-    echo ""
-    echo "*(Fill in manually: one before/after comparison of a prompt or tool change.)*"
-    echo ""
-    echo "| Change | Model | Task | Pass Before | Pass After | Iter Before | Iter After |"
-    echo "| ------ | ----- | ---- | ----------- | ---------- | ----------- | ---------- |"
     echo ""
     echo "## Conclusions"
     echo ""

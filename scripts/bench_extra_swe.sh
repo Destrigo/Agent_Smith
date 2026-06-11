@@ -6,7 +6,6 @@
 #   ./scripts/bench_extra_swe.sh --jobs 4  # run N models in parallel per task
 #
 # Results are saved in evaluations/bench_extra_swe/<datetime>/
-# Compatible with bash 3.2+ (macOS default shell).
 
 set -euo pipefail
 
@@ -14,13 +13,11 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 MOULINETTE_DIR="$PROJECT_DIR/moulinette/moulinette"
 
-# ── extra SWE-bench tasks (beyond EXAM_POOL) ──────────────────────────────────
 EXTRA_TASKS=(
-    "django__django-16082"   # MOD operator output_field — 15min-1h, patch ~356b
-    "django__django-13406"   # second extra for margin
+    "django__django-16082"   # MOD operator output_field
+    "django__django-13406"
 )
 
-# ── all models: Format "model_id|provider|url" ────────────────────────────────
 MODELS=(
     "mistral-small-latest|mistral|https://api.mistral.ai/v1"
     "mistral-medium-latest|mistral|https://api.mistral.ai/v1"
@@ -35,7 +32,6 @@ MODELS=(
     "devstral-medium-latest|mistral|https://api.mistral.ai/v1"
 )
 
-# ── arg parsing ───────────────────────────────────────────────────────────────
 JOBS=1
 
 while [[ $# -gt 0 ]]; do
@@ -45,7 +41,6 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# ── setup ─────────────────────────────────────────────────────────────────────
 [ -f "$PROJECT_DIR/.env" ] && set -a && source "$PROJECT_DIR/.env" && set +a
 
 DATETIME=$(date +"%Y-%m-%d_%H-%M-%S")
@@ -64,7 +59,6 @@ log "Jobs:        $JOBS"
 log "Output:      $OUT_DIR"
 log "=================================================="
 
-# ── run one model on one task (called in subshell) ────────────────────────────
 run_one() {
     local MODEL="$1"
     local PROVIDER="$2"
@@ -119,7 +113,6 @@ run_one() {
     cd "$PROJECT_DIR"
 }
 
-# ── main loop: task by task, models in batches of JOBS ───────────────────────
 TASK_DIR_ROOT="$OUT_DIR/_tasks"
 mkdir -p "$TASK_DIR_ROOT"
 
@@ -160,7 +153,6 @@ for INSTANCE_ID in "${EXTRA_TASKS[@]}"; do
     for PID in "${PIDS[@]}"; do wait "$PID" || true; done
 done
 
-# ── summary ───────────────────────────────────────────────────────────────────
 log ""
 log "=================================================="
 log "SUMMARY"

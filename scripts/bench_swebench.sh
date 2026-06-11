@@ -15,11 +15,9 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 MOULINETTE_DIR="$PROJECT_DIR/moulinette/moulinette"
 
-# ── defaults ──────────────────────────────────────────────────────────────────
 N=0       # 0 = all tasks
 SHUFFLE=0
 
-# ── arg parsing ───────────────────────────────────────────────────────────────
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --n)      N="$2"; shift 2 ;;
@@ -28,14 +26,12 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# ── load .env ─────────────────────────────────────────────────────────────────
 [ -f "$PROJECT_DIR/.env" ] && set -a && source "$PROJECT_DIR/.env" && set +a
 
 MODEL="${AGENT_MODEL:-mistral-large-latest}"
 URL="${AGENT_PROVIDER_URL:-https://api.mistral.ai/v1}"
 PROVIDER="${AGENT_PROVIDER:-mistral}"
 
-# ── get task list from exam pool ───────────────────────────────────────────────
 cd "$MOULINETTE_DIR"
 ALL_IDS=$(uv run python -c "
 from moulinette.swebench import EXAM_POOL
@@ -75,12 +71,10 @@ for INSTANCE_ID in $ALL_IDS; do
 
     printf "[%d/%d] %s ... " "$IDX" "$TOTAL" "$INSTANCE_ID"
 
-    # Dump task
     cd "$MOULINETTE_DIR"
     uv run moulinette_eval dump swebench --task-id "$INSTANCE_ID" --output "$TASK_FILE" \
         >> "$TASK_DIR/dump.log" 2>&1
 
-    # Run agent
     cd "$PROJECT_DIR"
     AGENT_START=$(date +%s)
     uv run agent-swebench \
@@ -100,7 +94,6 @@ for INSTANCE_ID in $ALL_IDS; do
         continue
     fi
 
-    # Validate
     cd "$MOULINETTE_DIR"
     if uv run moulinette_eval validate swebench "$TASK_FILE" "$SOL_FILE" \
             >> "$TASK_DIR/validate.log" 2>&1; then

@@ -16,12 +16,10 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 MOULINETTE_DIR="$PROJECT_DIR/moulinette/moulinette"
 
-# ── defaults ──────────────────────────────────────────────────────────────────
 N=0          # 0 = all tasks
 JOBS=1       # sequential by default
 SHUFFLE=0
 
-# ── arg parsing ───────────────────────────────────────────────────────────────
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --n)      N="$2";    shift 2 ;;
@@ -31,14 +29,12 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# ── load .env ─────────────────────────────────────────────────────────────────
 [ -f "$PROJECT_DIR/.env" ] && set -a && source "$PROJECT_DIR/.env" && set +a
 
 MODEL="${AGENT_MODEL:-mistral-large-latest}"
 URL="${AGENT_PROVIDER_URL:-https://api.mistral.ai/v1}"
 PROVIDER="${AGENT_PROVIDER:-mistral}"
 
-# ── get task list ─────────────────────────────────────────────────────────────
 cd "$MOULINETTE_DIR"
 ALL_IDS=$(uv run python -c "
 from moulinette.mbpp import InteractMBPP
@@ -74,19 +70,16 @@ run_task() {
     local SOL_FILE="$OUT_DIR/$TASK_ID/solution.json"
     mkdir -p "$OUT_DIR/$TASK_ID"
 
-    # Dump
     cd "$MOULINETTE_DIR"
     uv run python -c "
 from moulinette.mbpp import InteractMBPP
 import json, pathlib
 t = InteractMBPP().get_task(task_id=$TASK_ID)
-# Coerce task_id to str for compatibility
-t['task_id'] = str(t['task_id'])
+t['task_id'] = str(t['task_id'])  # coerce to str for agent compatibility
 pathlib.Path('$TASK_FILE').write_text(json.dumps(t))
 " 2>/dev/null
     cd "$PROJECT_DIR"
 
-    # Run agent
     uv run agent-mbpp \
         --task-file "$TASK_FILE" \
         --output "$SOL_FILE" \
